@@ -3,7 +3,6 @@
   "displayName": "solidAuth",
   "description": "An Authentication Provider for the Solid Ecosystem",
   "version": "0.0.1",
-  "publisher": "Inrupt",
   "engines": {
     "vscode": "^1.72.0"
   },
@@ -11,42 +10,56 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:solidauth.helloWorld"
+    "onCommand:solidauth.login",
+    "onCommand:solidauth.logout"
   ],
-  "main": "./dist/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "solidauth.helloWorld",
-        "title": "Hello World"
+        "command": "solidauth.login",
+        "title": "Log in with a Solid Pod provider",
+        "category": "Solid Auth"
+      },
+      {
+        "command": "solidauth.logout",
+        "title": "Log out of all Solid providers",
+        "category": "Solid Auth"
+      }
+    ],
+    "authentication": [
+      {
+        "id": "solidauth",
+        "label": "Solid Ecosystem"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.72.0",
+    "@inrupt/solid-client-authn-core": "^1.12.2",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "16.x",
+    "@types/vscode": "^1.72.0",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
+    "@vscode/test-electron": "^2.1.5",
     "eslint": "^8.24.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
-    "typescript": "^4.8.4",
-    "ts-loader": "^9.4.1",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "@vscode/test-electron": "^2.1.5"
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "@comunica/query-sparql-solid": "^2.3.0",
+    "@inrupt/solid-client-authn-node": "^1.12.2",
+    "solid-node-interactive-auth": "^1.0.2",
+    "uuid": "^9.0.0"
   }
 }

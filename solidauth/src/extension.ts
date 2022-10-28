@@ -1,26 +1,39 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { SolidAuthenticationProvider } from './auth';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	const authProvider = new SolidAuthenticationProvider(context)
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "solidauth" is now active!');
+	context.subscriptions.push(
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('solidauth.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from solidAuth!');
-	});
+		vscode.authentication.registerAuthenticationProvider(
+			SolidAuthenticationProvider.id, 'Solid Ecosystem Authentication',
+			authProvider,
+			// TODO: Introduce multi-account support
+			{ supportsMultipleAccounts: false }
+		),
 
-	context.subscriptions.push(disposable);
+		vscode.commands.registerCommand('solidauth.login', async () => {
+			const session = await vscode.authentication.getSession(SolidAuthenticationProvider.id, [], { createIfNone: true });
+			vscode.window.showInformationMessage(`Welcome ${session.account.label}`);
+		}),
+
+		vscode.commands.registerCommand('solidauth.logout', async () => {
+			const sessions = await authProvider.getSessions();
+
+			// TODO: Introduce error handling here
+			await Promise.allSettled(
+				sessions.map(async session => authProvider.removeSession(session.id))
+			);
+
+			vscode.window.showInformationMessage(`Logged out of Solid Providers`);
+		}),
+	);
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
