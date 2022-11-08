@@ -1,9 +1,15 @@
 {
   "name": "solidfs",
+  "publisher": "inrupt",
   "displayName": "solidFS",
   "description": "View your Solid Pod as a local File System",
   "version": "0.0.1",
-  "publisher": "Inrupt",
+  "extensionKind": [
+    "workspace"
+  ],
+  "extensionDependencies": [
+    "inrupt.solidauth"
+  ],
   "engines": {
     "vscode": "^1.72.0"
   },
@@ -31,16 +37,25 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.72.0",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
     "@types/node": "16.x",
+    "@types/vscode": "^1.72.0",
     "@typescript-eslint/eslint-plugin": "^5.38.1",
     "@typescript-eslint/parser": "^5.38.1",
+    "@vscode/test-electron": "^2.1.5",
     "eslint": "^8.24.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
-    "typescript": "^4.8.4",
-    "@vscode/test-electron": "^2.1.5"
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "@comunica/query-sparql-solid": "^2.3.0",
+    "@inrupt/solid-client": "^1.23.3",
+    "@inrupt/solid-client-authn-node": "^1.12.2",
+    "@rdfjs/types": "^1.1.0",
+    "http-link-header": "^1.0.5",
+    "n3": "^1.16.2",
+    "solidauth": "file:../solidauth"
   }
 }
