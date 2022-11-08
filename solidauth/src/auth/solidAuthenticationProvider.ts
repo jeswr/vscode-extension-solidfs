@@ -3,7 +3,7 @@ import { Session, getSessionIdFromStorageAll, clearSessionFromStorageAll, } from
 import { interactiveLogin } from 'solid-node-interactive-auth';
 import { v4 } from 'uuid';
 import * as vscode from 'vscode';
-import { AuthenticationProvider, AuthenticationProviderAuthenticationSessionsChangeEvent, AuthenticationSession, EventEmitter, ExtensionContext } from 'vscode';
+import { AuthenticationProvider, AuthenticationProviderAuthenticationSessionsChangeEvent, Disposable, AuthenticationSession, EventEmitter, ExtensionContext } from 'vscode';
 import { VscodeSessionStorage } from './vscodeStorage';
 import { StorageUtility } from '@inrupt/solid-client-authn-core';
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
@@ -13,12 +13,16 @@ import { StorageUtility } from '@inrupt/solid-client-authn-core';
 
 // TODO: Allow users to store a list of idp providers.
 
-export class SolidAuthenticationProvider implements AuthenticationProvider {
+
+
+export class SolidAuthenticationProvider implements AuthenticationProvider, Disposable {
   public static readonly id = 'solidauth';
   private _sessionChangeEmitter = new EventEmitter<AuthenticationProviderAuthenticationSessionsChangeEvent>();
   // private _disposable: Disposable;
   private _storage: VscodeSessionStorage;
   private s?: AuthenticationSession;
+  // TODO: Add logging similar to https://github.com/microsoft/vscode/blob/main/extensions/github-authentication/src/github.ts
+  private log = vscode.window.createOutputChannel('Solid Authentication');
 
   constructor(private readonly context: ExtensionContext) {
     this._storage = new VscodeSessionStorage(context);
@@ -75,6 +79,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider {
 
     if (session) {
       this.s = session;
+      console.log('about to create session', this.s)
       return this.s;
     }
 
@@ -116,6 +121,11 @@ export class SolidAuthenticationProvider implements AuthenticationProvider {
         "http://localhost:3000/",
         "Other"
       ], {
+        // TODO: Use I10n with https://github.com/microsoft/vscode/blob/main/extensions/github-authentication/src/githubServer.ts
+        // for text throughout
+
+        // Details on how to do this seem to be at https://github.com/microsoft/vscode-l10n
+
         title: "Select Pod Provider",
         placeHolder: "https://login.inrupt.com/"
       }, token);

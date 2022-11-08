@@ -1,8 +1,10 @@
 {
   "name": "solidauth",
+  "publisher": "inrupt",
   "displayName": "solidAuth",
   "description": "An Authentication Provider for the Solid Ecosystem",
   "version": "0.0.1",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.72.0"
   },
@@ -14,6 +16,10 @@
     "onCommand:solidauth.logout",
     "onAuthenticationRequest:solidauth"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
+  },
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -47,20 +53,20 @@
     "@inrupt/solid-client-authn-core": "^1.12.2",
     "@types/glob": "^8.0.0",
     "@types/mocha": "^10.0.0",
-    "@types/node": "16.x",
-    "@types/vscode": "^1.72.0",
-    "@typescript-eslint/eslint-plugin": "^5.38.1",
-    "@typescript-eslint/parser": "^5.38.1",
-    "@vscode/test-electron": "^2.1.5",
-    "eslint": "^8.24.0",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.73.0",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "@vscode/test-electron": "^2.2.0",
+    "eslint": "^8.26.0",
     "glob": "^8.0.3",
-    "mocha": "^10.0.0",
+    "mocha": "^10.1.0",
     "typescript": "^4.8.4"
   },
   "dependencies": {
     "@comunica/query-sparql-solid": "^2.3.0",
     "@inrupt/solid-client-authn-node": "^1.12.2",
-    "solid-node-interactive-auth": "^1.0.2",
+    "solid-node-interactive-auth": "^1.1.0",
     "uuid": "^9.0.0"
   }
 }

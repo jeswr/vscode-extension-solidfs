@@ -19,7 +19,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 		vscode.commands.registerCommand('solidauth.login', async () => {
 			const session = await vscode.authentication.getSession(SolidAuthenticationProvider.id, [], { createIfNone: true });
+			console.log('logged in with session', session.account, (session.account as any).fetch)
 			vscode.window.showInformationMessage(`Welcome ${session.account.label}`);
+			// vscode.authentication.onDidChangeSessions(e => {
+			// 	e.provider
+			// })
+
+			// vscode
 		}),
 
 		vscode.commands.registerCommand('solidauth.logout', async () => {
