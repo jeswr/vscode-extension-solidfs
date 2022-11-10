@@ -299,6 +299,26 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       // const access = JSON.parse(accessToken);
       // access.privateKey
       // access.publicKey
+      // TODO: At this point we should be hooking into whichever handler has the updated access_
+      // session.onNewRefreshToken(() => {
+        
+      // })
+
+      // Listen in for the custom event indicating a new access token
+      // TODO: Do removed on logout style events
+      session.on('access_token', async (access_token: string) => {
+        d['access_token'] = access_token;
+
+        const newSession = toAuthenticationSession(session, label!, JSON.stringify(d));
+
+        if (newSession) {
+          this._sessionChangeEmitter.fire({
+            changed: [ newSession ],
+            added: [],
+            removed: [],
+          })
+        }
+      })
 
       return toAuthenticationSession(session, label, JSON.stringify(d));
     });

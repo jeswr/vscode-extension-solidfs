@@ -3,9 +3,11 @@
 import { QueryEngine } from '@comunica/query-sparql-solid';
 import * as vscode from 'vscode';
 
+// TODO: Investigate https://stackoverflow.com/questions/61959354/vscode-extension-add-custom-command-to-right-click-menu-in-file-explorer
+
 
 const LinkHeader = require('http-link-header')
-
+// TODO: 
 // TODO: Just use the WebID data once https://github.com/CommunitySolidServer/CommunitySolidServer/issues/1484 is closed
 export async function getPodRoot(url: string, fetch: Function): Promise<string | null> {
 	let splitUrl = url.split('/')
