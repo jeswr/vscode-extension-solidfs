@@ -13,6 +13,18 @@ import { StorageUtility } from '@inrupt/solid-client-authn-core';
 
 // TODO: Allow users to store a list of idp providers.
 
+import {
+  IClient,
+  IClientRegistrar,
+  IIssuerConfigFetcher,
+  IStorageUtility,
+  loadOidcContextFromStorage,
+} from "@inrupt/solid-client-authn-core";
+
+import IssuerConfigFetcher from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
+import { AuthCodeRedirectHandler } from './AuthCodeRedirectHandler';
+
+// TODO: Introduce 
 
 
 export class SolidAuthenticationProvider implements AuthenticationProvider, Disposable {
@@ -66,7 +78,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       throw new Error('Can only get sessions with undefined scope');
     }
 
-    console.log('get session called', this.s)
+    // console.log('get session called', this.s)
 
     return this.s ? [this.s] : [];
   }
@@ -79,7 +91,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
     if (session) {
       this.s = session;
-      console.log('about to create session', this.s)
+      // console.log('about to create session', this.s)
       return this.s;
     }
 
@@ -91,7 +103,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     await clearSessionFromStorageAll(this._storage.secureStorage);
     await clearSessionFromStorageAll(new StorageUtility(this._storage.secureStorage, this._storage.insecureStorage));
     
-    console.log('removing', sessionId)
+    // console.log('removing', sessionId)
     await (this.s as any)?.session.logout();
     delete this.s;
   }
@@ -110,13 +122,13 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       title: "Sign in to a Solid Provider",
       cancellable: true,
     }, async (progress, token) => {
-      // TODO: Get these from a remote list of trusted providers
+      // TODO: Get these from a remote list of trusted providers (and then cache)
       let oidcIssuer = await vscode.window.showQuickPick([
         "https://login.inrupt.com/",
         "https://solidcommunity.net/",
         "https://solidweb.me/",
         "https://pod.playground.solidlab.be/",
-        "https://openid.release-ap-1-standalone.inrupt.com/",
+        // "https://openid.release-ap-1-standalone.inrupt.com/",
         "https://trinpod.us/gmxLogin",
         "http://localhost:3000/",
         "Other"
@@ -156,8 +168,20 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       const session = new Session({
         secureStorage: this._storage.secureStorage,
         insecureStorage: this._storage.insecureStorage,
+        // clientAuthentication
       });
 
+      // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
+      const currentHandler = (session as any).clientAuthentication.redirectHandler.handleables[0];
+      (session as any).clientAuthentication.redirectHandler.handleables[0] = new AuthCodeRedirectHandler(
+        currentHandler.storageUtility,
+        currentHandler.sessionInfoManager,
+        currentHandler.issuerConfigFetcher,
+        currentHandler.clientRegistrar,
+        currentHandler.tokenRefresher
+      )
+
+      // TODO: See if it is plausible for this to occur after redirect call is made
       const handleRedirect = (url: string) => {
         if (!token.isCancellationRequested) {
           progress.report({
@@ -237,21 +261,58 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         await this._storage.insecureStorage.set(`webid-label-${session.info.sessionId}`, label);
       }
 
-      return toAuthenticationSession(session, label);
+      // TODO: See if this should be a private member of the class
+      const storageUtility = new StorageUtility(this._storage.secureStorage, this._storage.insecureStorage);
+
+      const data = await loadOidcContextFromStorage(
+        session.info.sessionId,
+        new StorageUtility(this._storage.secureStorage, this._storage.insecureStorage),
+        new IssuerConfigFetcher(storageUtility)
+      )
+
+      // console.log('loaded oidc', data)
+
+      const secure = await this._storage.secureStorage.get(`solidClientAuthenticationUser:${session.info.sessionId}`)
+      const insecureAccess = await this._storage.insecureStorage.get(`solidClientAuthenticationUser:${session.info.sessionId}`);
+
+      // if (!accessToken) {
+      //   throw new Error('Access token could not be found in secure storage')
+      // }
+
+      let d: Record<string, any> = {};
+
+      if (secure) {
+        d = {  ...d, ...JSON.parse(secure) }
+      }
+
+      if (insecureAccess) {
+        d = {  ...d, ...JSON.parse(insecureAccess) }
+      }
+
+      d = {
+        access_token: d.access_token,
+        privateKey: d.privateKey,
+        publicKey: d.publicKey,
+        // rawPrivateKey: d.rawPrivateKey
+      }
+
+      // const access = JSON.parse(accessToken);
+      // access.privateKey
+      // access.publicKey
+
+      return toAuthenticationSession(session, label, JSON.stringify(d));
     });
   }
 }
 
-function toAuthenticationSession(session: Session, label: string): AuthenticationSession | undefined {
+function toAuthenticationSession(session: Session, label: string, accessToken: string): AuthenticationSession | undefined {
   if (session.info.isLoggedIn && session.info.webId) {
     return {
       id: session.info.sessionId,
-      accessToken: '',
+      accessToken,
       account: {
         label,
         id: session.info.webId,
-        // @ts-ignore
-        fetch: session.fetch
       },
       scopes: [],
     }
