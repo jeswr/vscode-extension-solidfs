@@ -8,6 +8,9 @@
   "engines": {
     "vscode": "^1.72.0"
   },
+  "extensionKind": [
+    "workspace"
+  ],
   "categories": [
     "Other"
   ],
@@ -20,7 +23,7 @@
     "type": "git",
     "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
   },
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -46,7 +49,7 @@
     "compile": "webpack",
     "watch": "webpack --watch",
     "package:webpack": "webpack --mode production --devtool hidden-source-map",
-    "package:vsce": "vsce package",
+    "package:vsce": "vsce package --no-dependencies",
     "package": "npm run package:vsce && npm run package:webpack",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
@@ -56,8 +59,8 @@
   },
   "dependencies": {
     "@comunica/query-sparql-solid": "^2.3.0",
+    "@inrupt/solid-client-authn-core": "^1.12.2",
     "@inrupt/solid-client-authn-node": "^1.12.2",
-    "solid-node-interactive-auth": "^1.1.0",
-    "uuid": "^9.0.0"
+    "solid-node-interactive-auth": "^1.1.0"
   }
 }

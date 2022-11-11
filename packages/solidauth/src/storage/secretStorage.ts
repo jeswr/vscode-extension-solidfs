@@ -9,7 +9,6 @@ export class ISecretStorage implements IStorage {
   }
 
   async set(key: string, value: string): Promise<void> {
-    console.log('setting', this.prefix + key, value)
     return this.secrets.store(this.prefix + key, value);
   }
 

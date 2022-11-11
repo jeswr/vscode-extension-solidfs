@@ -19,7 +19,6 @@ export class IMementoStorage implements IStorage {
   }
 
   async set(key: string, value: string): Promise<void> {
-    console.log('setting', this.prefix + key, value)
     await this.memento.update(this.prefix + key, value);
   }
 
