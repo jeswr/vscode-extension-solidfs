@@ -57,7 +57,7 @@
     "watch": "webpack --watch",
     "package:webpack": "webpack --mode production --devtool hidden-source-map",
     "package:vsce": "vsce package --no-dependencies",
-    "package": "npm run package:vsce && npm run package:webpack",
+    "package": "npm run package:webpack && npm run package:vsce",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile",

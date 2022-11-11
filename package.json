@@ -26,6 +26,7 @@
     "@types/node": "^18.11.9",
     "@types/vscode": "^1.73.0",
     "@vscode/test-electron": "^2.2.0",
+    "copyfiles": "^2.4.1",
     "depcheck": "^1.4.3",
     "eslint-plugin-unused-imports": "^2.0.0",
     "glob": "^8.0.3",
