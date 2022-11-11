@@ -1,11 +1,54 @@
-import { IIncomingRedirectHandler, IStorageUtility, ISessionInfoManager, IIssuerConfigFetcher, IClientRegistrar, ITokenRefresher, ISessionInfo, getSessionIdFromOauthState, loadOidcContextFromStorage, IClient, KeyPair, generateDpopKeyPair, RefreshOptions, EVENTS, buildAuthenticatedFetch, getWebidFromTokenPayload, saveSessionInfoToStorage } from "@inrupt/solid-client-authn-core";
+//
+// Copyright 2022 Inrupt Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+// Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+import type {
+  IIncomingRedirectHandler,
+  IStorageUtility,
+  ISessionInfoManager,
+  IIssuerConfigFetcher,
+  IClientRegistrar,
+  ITokenRefresher,
+  ISessionInfo,
+  IClient,
+  KeyPair,
+  RefreshOptions,
+} from "@inrupt/solid-client-authn-core";
+import {
+  getSessionIdFromOauthState,
+  loadOidcContextFromStorage,
+  generateDpopKeyPair,
+  EVENTS,
+  buildAuthenticatedFetch,
+  getWebidFromTokenPayload,
+  saveSessionInfoToStorage,
+} from "@inrupt/solid-client-authn-core";
 import { configToIssuerMetadata } from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
-import { KeyObject } from "crypto";
+import type { KeyObject } from "crypto";
 import { fetch as globalFetch } from "cross-fetch";
-import { EventEmitter } from "events";
+import type { EventEmitter } from "events";
 import { Issuer } from "openid-client";
 
-export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
+export default class AuthCodeRedirectHandler
+  implements IIncomingRedirectHandler
+{
+  // eslint-disable-next-line no-useless-constructor
   constructor(
     private storageUtility: IStorageUtility,
     private sessionInfoManager: ISessionInfoManager,
@@ -14,6 +57,7 @@ export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
     private tokenRefresher: ITokenRefresher
   ) {}
 
+  // eslint-disable-next-line class-methods-use-this
   async canHandle(redirectUrl: string): Promise<boolean> {
     try {
       const myUrl = new URL(redirectUrl);
@@ -142,7 +186,11 @@ export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
       dpopKey
     );
 
-    await this.storageUtility.setForUser(sessionId, { access_token: tokenSet.access_token }, { secure: true });
+    await this.storageUtility.setForUser(
+      sessionId,
+      { access_token: tokenSet.access_token },
+      { secure: true }
+    );
 
     const sessionInfo = await this.sessionInfoManager.get(sessionId);
     if (!sessionInfo) {

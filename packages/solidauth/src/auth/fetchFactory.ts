@@ -1,30 +1,34 @@
-/*
- * Copyright 2022 Inrupt Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to use,
- * copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
- * Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
- * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+//
+// Copyright 2022 Inrupt Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+// Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
-// eslint-disable-next-line no-shadow
-import { fetch, Headers } from "cross-fetch";
-import { EventEmitter } from "events";
-import { REFRESH_BEFORE_EXPIRATION_SECONDS, EVENTS } from "@inrupt/solid-client-authn-core/dist/constant";
-import { ITokenRefresher } from "@inrupt/solid-client-authn-core/dist/login/oidc/refresh/ITokenRefresher";
-import { createDpopHeader, KeyPair } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
+import type { fetch as crossFetch } from "cross-fetch";
+import { Headers as CrossFetchHeaders } from "cross-fetch";
+import type { EventEmitter } from "events";
+import {
+  REFRESH_BEFORE_EXPIRATION_SECONDS,
+  EVENTS,
+} from "@inrupt/solid-client-authn-core/dist/constant";
+import type { ITokenRefresher } from "@inrupt/solid-client-authn-core/dist/login/oidc/refresh/ITokenRefresher";
+import type { KeyPair } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
+import { createDpopHeader } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
 import { OidcProviderError } from "@inrupt/solid-client-authn-core/dist/errors/OidcProviderError";
 import { InvalidResponseError } from "@inrupt/solid-client-authn-core/dist/errors/InvalidResponseError";
 
@@ -59,8 +63,8 @@ async function buildDpopFetchOptions(
   dpopKey: KeyPair,
   defaultOptions?: RequestInit
 ): Promise<RequestInit> {
-  const headers = new Headers(defaultOptions?.headers);
-  // Any pre-existing Authorization header should be overriden.
+  const headers = new CrossFetchHeaders(defaultOptions?.headers);
+  // Any pre-existing Authorization header should be overridden.
   headers.set("Authorization", `DPoP ${authToken}`);
   headers.set(
     "DPoP",
@@ -81,7 +85,7 @@ async function buildAuthenticatedHeaders(
   if (dpopKey !== undefined) {
     return buildDpopFetchOptions(targetUrl, authToken, dpopKey, defaultOptions);
   }
-  const headers = new Headers(defaultOptions?.headers);
+  const headers = new CrossFetchHeaders(defaultOptions?.headers);
   // Any pre-existing Authorization header should be overriden.
   headers.set("Authorization", `Bearer ${authToken}`);
   return {
@@ -91,7 +95,7 @@ async function buildAuthenticatedHeaders(
 }
 
 async function makeAuthenticatedRequest(
-  unauthFetch: typeof fetch,
+  unauthFetch: typeof crossFetch,
   accessToken: string,
   url: RequestInfo | URL,
   defaultRequestInit?: RequestInit,
@@ -157,7 +161,7 @@ const computeRefreshDelay = (expiresIn?: number): number => {
  * the provided token, and adds a DPoP header if applicable.
  */
 export async function buildAuthenticatedFetch(
-  unauthFetch: typeof fetch,
+  unauthFetch: typeof crossFetch,
   accessToken: string,
   options?: {
     dpopKey?: KeyPair;
@@ -165,7 +169,7 @@ export async function buildAuthenticatedFetch(
     expiresIn?: number;
     eventEmitter?: EventEmitter;
   }
-): Promise<typeof fetch> {
+): Promise<typeof crossFetch> {
   let currentAccessToken = accessToken;
   let latestTimeout: Parameters<typeof clearTimeout>[0];
   const currentRefreshOptions: RefreshOptions | undefined =
@@ -190,13 +194,12 @@ export async function buildAuthenticatedFetch(
         );
         // Update the tokens in the closure if appropriate.
 
-
-        /*** BEGIN CUSTOM CODE */
+        /** * BEGIN CUSTOM CODE */
         if (currentAccessToken !== refreshedAccessToken) {
-          options!.eventEmitter?.emit('access_token', refreshedAccessToken);
+          options?.eventEmitter?.emit("access_token", refreshedAccessToken);
         }
 
-        /*** END CUSTOM CODE */
+        /** * END CUSTOM CODE */
 
         currentAccessToken = refreshedAccessToken;
         if (refreshToken !== undefined) {
