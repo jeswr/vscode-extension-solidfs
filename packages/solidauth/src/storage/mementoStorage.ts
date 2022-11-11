@@ -22,7 +22,6 @@ import type { IStorage } from "@inrupt/solid-client-authn-core";
 import type { Memento } from "vscode";
 
 export class IMementoStorage implements IStorage {
-  // eslint-disable-next-line no-us
   constructor(
     private memento: Memento,
     private prefix = "@inrupt/solid-client-authn:"
