@@ -67,6 +67,6 @@
     "@comunica/query-sparql-solid": "^2.3.0",
     "@inrupt/solid-client-authn-core": "^1.12.2",
     "@inrupt/solid-client-authn-node": "^1.12.2",
-    "solid-node-interactive-auth": "^1.1.0"
+    "solid-node-interactive-auth": "^1.1.1"
   }
 }
