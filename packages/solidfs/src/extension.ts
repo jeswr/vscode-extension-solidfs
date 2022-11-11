@@ -18,7 +18,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-import { QueryEngine } from "@comunica/query-sparql-solid";
+// import { QueryEngine } from "@comunica/query-sparql-solid";
 import * as vscode from "vscode";
 
 // TODO: Investigate https://stackoverflow.com/questions/61959354/vscode-extension-add-custom-command-to-right-click-menu-in-file-explorer
@@ -66,18 +66,18 @@ function getFetch(
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  const engine = new QueryEngine();
+  // const engine = new QueryEngine();
 
   // TODO: Potentially use scopes to indicate the webId that we want to log in with
-  vscode.authentication.getSession("solidauth", [], { createIfNone: false });
+  // vscode.authentication.getSession("solidauth", [], { createIfNone: false });
 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "solidfs" is now active!');
-  const data = context.workspaceState.get<{ [key: string]: string[] }>(
-    "solidfs"
-  );
-  console.log("extension is active with the data", data);
+  // const data = context.workspaceState.get<{ [key: string]: string[] }>(
+  //   "solidfs"
+  // );
+  console.log("extension is active with the data");
   // const state = data && JSON.parse(data)
 
   // The command has been defined in the package.json file
@@ -91,30 +91,31 @@ export function activate(context: vscode.ExtensionContext) {
       });
       console.log("created session", session);
 
-      const fetch = getFetch(session);
-      const webId = session.account.id;
+      // const fetch = getFetch(session);
+      // const webId = session.account.id;
 
-      const root = await getPodRoot(webId, fetch);
-      let roots = root ? [root] : [];
+      // const root = await getPodRoot(webId, fetch);
+      // let roots = root ? [root] : [];
 
-      if (roots.length === 0) {
-        const bindings = await engine.queryBindings(
-          `SELECT DISTINCT * WHERE { <${webId}> <http://www.w3.org/ns/pim/space#storage> ?o }`,
-          {
-            sources: [webId],
-          }
-        );
+      // if (roots.length === 0) {
+      //   const bindings = await engine.queryBindings(
+      //     `SELECT DISTINCT * WHERE { <${webId}> <http://www.w3.org/ns/pim/space#storage> ?o }`,
+      //     {
+      //       sources: [webId],
+      //     }
+      //   );
 
-        roots = await bindings
-          .map((binding) => binding.get("o")?.value ?? null)
-          .toArray();
-      }
+      //   roots = await bindings
+      //     .map((binding) => binding.get("o")?.value ?? null)
+      //     .toArray();
+      // }
 
-      // console.log('the loaded roots are', roots)
-      await context.workspaceState.update(`solidfs`, { [webId]: roots });
+      // // console.log('the loaded roots are', roots)
+      // await context.workspaceState.update(`solidfs`, { [webId]: roots });
 
       vscode.window.showInformationMessage(
-        `Welcome from solidFS ${session.account.label}`
+        // `Welcome from solidFS ${session.account.label}`
+        `Welcome from solidFS`
       );
 
       // The code you place here will be executed every time your command is executed
