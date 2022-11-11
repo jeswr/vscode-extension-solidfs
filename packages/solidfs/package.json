@@ -4,6 +4,21 @@
   "displayName": "solidFS",
   "description": "View your Solid Pod as a local File System",
   "version": "0.0.1",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
+  },
+  "bugs": {
+    "email": "support@inrupt.com",
+    "url": "https://github.com/inrupt/vscode-extension-solidfs/issues"
+  },
+  "homepage": "https://github.com/microsoft/vscode-wordcount/blob/main/solidfs/README.md",
+  "galleryBanner": {
+    "color": "#7c4dff",
+    "theme": "dark"
+  },
+  "icon": "image.png",
   "extensionKind": [
     "workspace"
   ],
@@ -11,7 +26,7 @@
     "inrupt.solidauth"
   ],
   "engines": {
-    "vscode": "^1.72.0"
+    "vscode": "^1.73.0"
   },
   "categories": [
     "Other"

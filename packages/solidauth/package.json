@@ -5,9 +5,19 @@
   "description": "An Authentication Provider for the Solid Ecosystem",
   "version": "0.0.1",
   "license": "MIT",
-  "engines": {
-    "vscode": "^1.72.0"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
   },
+  "bugs": {
+    "email": "support@inrupt.com",
+    "url": "https://github.com/inrupt/vscode-extension-solidfs/issues"
+  },
+  "homepage": "https://github.com/microsoft/vscode-wordcount/blob/main/solidauth/README.md",
+  "engines": {
+    "vscode": "^1.73.0"
+  },
+  "icon": "image.png",
   "extensionKind": [
     "workspace"
   ],
@@ -19,10 +29,6 @@
     "onCommand:solidauth.logout",
     "onAuthenticationRequest:solidauth"
   ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
-  },
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
