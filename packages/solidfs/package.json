@@ -59,12 +59,12 @@
     "test": "node ./out/test/runTest.js"
   },
   "dependencies": {
-    "@comunica/query-sparql-solid": "^2.3.0",
+    "@comunica/query-sparql-solid": "^2.4.0",
     "@inrupt/solid-client": "^1.23.3",
     "@inrupt/solid-client-authn-node": "^1.12.2",
     "@rdfjs/types": "^1.1.0",
-    "http-link-header": "^1.0.5",
-    "n3": "^1.16.2"
+    "http-link-header": "^1.1.0",
+    "n3": "^1.16.3"
   },
   "devDependencies": {
     "solidauth": "^0.0.1"
