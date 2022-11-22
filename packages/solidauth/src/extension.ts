@@ -59,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
       );
       vscode.authentication.onDidChangeSessions((sessions) => {
         if (sessions.provider.id === SolidAuthenticationProvider.id) {
-          console.log("session did change", sessions);
+          // console.log("session did change", sessions);
         }
       });
 

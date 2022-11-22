@@ -29,6 +29,14 @@ suite("Extension Test Suite", () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   vscode.window.showInformationMessage("Start all tests.");
 
+  // test("Log in", async () => {
+    // const session = await vscode.authentication.getSession(
+    //   'solidauth',
+    //   [],
+    //   { createIfNone: true }
+    // );
+  // });
+
   test("Sample test", () => {
     assert.strictEqual(-1, [1, 2, 3].indexOf(5));
     assert.strictEqual(-1, [1, 2, 3].indexOf(0));

@@ -210,7 +210,7 @@ export class SolidAuthenticationProvider
         });
 
         // TODO: Give this the right storage
-        const session = new Session({
+        let session = new Session({
           secureStorage: this.storage.secureStorage,
           insecureStorage: this.storage.insecureStorage,
           // clientAuthentication
@@ -275,7 +275,18 @@ export class SolidAuthenticationProvider
         } catch (e) {
           // Some servers cannot handle redirects to the vscode:// scheme
           // @see https://github.com/CommunitySolidServer/CommunitySolidServer/issues/1483
+          // TODO: Work out why this is currently broken on the 1.1.1 version interactiveLogin
+          // Ive tried against css 5.0.0 and 5.1.0 and both don't seem to work. Same error also occurs in PodSpaces
+          // if you force an error above.
+          // We should also try different versions of the interactiveAuth package since we introduced a fix there
+
           try {
+            session = new Session({
+              secureStorage: this.storage.secureStorage,
+              insecureStorage: this.storage.insecureStorage,
+              // clientAuthentication
+            });
+
             await interactiveLogin({
               oidcIssuer,
               session,

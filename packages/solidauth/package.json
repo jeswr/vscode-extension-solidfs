@@ -69,6 +69,6 @@
     "@inrupt/solid-client": "^1.23.3",
     "@inrupt/solid-client-authn-core": "^1.12.2",
     "@inrupt/solid-client-authn-node": "^1.12.2",
-    "solid-node-interactive-auth": "^1.1.1"
+    "solid-node-interactive-auth": "1.1.0"
   }
 }
