@@ -39,7 +39,8 @@
     "commands": [
       {
         "command": "solidfs.helloWorld",
-        "title": "Hello World"
+        "title": "Hello World",
+        "category": "solidFS"
       }
     ]
   },
