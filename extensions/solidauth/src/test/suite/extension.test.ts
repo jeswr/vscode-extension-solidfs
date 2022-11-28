@@ -30,11 +30,11 @@ suite("Extension Test Suite", () => {
   vscode.window.showInformationMessage("Start all tests.");
 
   // test("Log in", async () => {
-    // const session = await vscode.authentication.getSession(
-    //   'solidauth',
-    //   [],
-    //   { createIfNone: true }
-    // );
+  // const session = await vscode.authentication.getSession(
+  //   'solidauth',
+  //   [],
+  //   { createIfNone: true }
+  // );
   // });
 
   test("Sample test", () => {

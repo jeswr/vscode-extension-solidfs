@@ -28,12 +28,13 @@ import LinkHeader = require("http-link-header");
 // TODO: Just use the WebID data once https://github.com/CommunitySolidServer/CommunitySolidServer/issues/910 is closed
 export async function getPodRoot(
   url: string,
-  fetch: Function
+  fetchFn: typeof globalThis.fetch
 ): Promise<string | null> {
   const splitUrl = url.split("/");
-  for (let index = splitUrl.length - 1; index > 2; --index) {
+  for (let index = splitUrl.length - 1; index > 2; index -= 1) {
     const currentUrl = `${splitUrl.slice(0, index).join("/")}/`;
-    const res = await fetch(currentUrl);
+    // eslint-disable-next-line no-await-in-loop
+    const res = await fetchFn(currentUrl);
     if (!res.ok)
       throw new Error(
         `HTTP Error Response requesting ${url}: ${res.status} ${res.statusText}`
@@ -56,11 +57,11 @@ export async function getPodRoot(
 function getFetch(
   session: vscode.AuthenticationSession
 ): typeof globalThis.fetch {
-  const { fetch } = session.account as any;
-  if (typeof fetch !== "function") {
+  const { fetch: fetchFn } = session.account as any;
+  if (typeof fetchFn !== "function") {
     throw new Error("Expected fetch to be a function");
   }
-  return fetch;
+  return fetchFn;
 }
 
 // This method is called when your extension is activated
@@ -128,4 +129,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 export function deactivate() {}

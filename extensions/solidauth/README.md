@@ -7,7 +7,9 @@ Provides Authentication for the Solid Ecosystem.
 This extension should be used via the `vscode.authentication` API. To get a Solid Session for your extension - do the following
 
 ```ts
-const session = await vscode.authentication.getSession('solidauth', [], { createIfNone: true });
+const session = await vscode.authentication.getSession("solidauth", [], {
+  createIfNone: true,
+});
 vscode.window.showInformationMessage(`Welcome ${session.account.label}`);
 ```
 
@@ -22,6 +24,5 @@ To use this extension make sure to add `inrupt.solidauth` to your extension depe
 ```
 
 ## Known Issues
-
 
 ## Release Notes

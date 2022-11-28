@@ -89,8 +89,6 @@ export class SolidFS implements vscode.FileSystemProvider {
       readonly excludes: readonly string[];
     }
   ): vscode.Disposable {
-    // console.log("watch called on", uri);
-
     // ignore, fires for all changes...
     return new vscode.Disposable(() => {});
   }

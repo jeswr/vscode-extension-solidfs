@@ -147,6 +147,7 @@ export class SolidAuthenticationProvider
   /**
    * Dispose the registered services
    */
+  // eslint-disable-next-line class-methods-use-this
   public async dispose() {
     // this._disposable.dispose();
   }
@@ -291,7 +292,7 @@ export class SolidAuthenticationProvider
               oidcIssuer,
               session,
               handleRedirect,
-              clientName
+              clientName,
             });
           } catch (err) {
             // Just use the original error if the interactive login also fails

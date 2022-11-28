@@ -21,6 +21,7 @@
 import type { fetch as crossFetch } from "cross-fetch";
 import { Headers as CrossFetchHeaders } from "cross-fetch";
 import type { EventEmitter } from "events";
+/* eslint-disable import/no-unresolved */
 import {
   REFRESH_BEFORE_EXPIRATION_SECONDS,
   EVENTS,
@@ -30,6 +31,7 @@ import type { KeyPair } from "@inrupt/solid-client-authn-core/dist/authenticated
 import { createDpopHeader } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
 import { OidcProviderError } from "@inrupt/solid-client-authn-core/dist/errors/OidcProviderError";
 import { InvalidResponseError } from "@inrupt/solid-client-authn-core/dist/errors/InvalidResponseError";
+/* eslint-enable import/no-unresolved */
 
 export type RefreshOptions = {
   sessionId: string;

@@ -1,13 +1,34 @@
+//
+// Copyright 2022 Inrupt Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal in
+// the Software without restriction, including without limitation the rights to use,
+// copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+// Software, and to permit persons to whom the Software is furnished to do so,
+// subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 import { buildAuthenticatedFetch } from "@inrupt/solid-client-authn-core";
 import { fetch as crossFetch } from "cross-fetch";
 import { importJWK } from "jose";
 import * as vscode from "vscode";
 
-const SOLID_AUTHENTICATION_PROVIDER_ID = 'solidauth';
+const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
 
 async function buildAuthenticatedFetchFromAccessToken(
   accessToken: string
 ): Promise<typeof crossFetch> {
+  // eslint-disable-next-line camelcase, prefer-const
   let { access_token, privateKey, publicKey } = JSON.parse(accessToken);
 
   let dpopKey;
@@ -22,11 +43,17 @@ async function buildAuthenticatedFetchFromAccessToken(
 
 // TODO: Fix this entire function - it is hacky, but also should not be necessary after the next auth package
 // release.
-export async function getSolidFetch(scopes: readonly string[], options?: vscode.AuthenticationGetSessionOptions) {
-  const session = await vscode.authentication.getSession(SOLID_AUTHENTICATION_PROVIDER_ID, scopes, options);
+export async function getSolidFetch(
+  scopes: readonly string[],
+  options?: vscode.AuthenticationGetSessionOptions
+) {
+  const session = await vscode.authentication.getSession(
+    SOLID_AUTHENTICATION_PROVIDER_ID,
+    scopes,
+    options
+  );
 
-  if (!session)
-    return;
+  if (!session) return;
 
   let definedSession = session;
 
@@ -47,18 +74,21 @@ export async function getSolidFetch(scopes: readonly string[], options?: vscode.
     }
   });
 
-  const f = async (input: RequestInfo | URL, init?: RequestInit | undefined): Promise<Response> => {
+  const f = async (
+    input: RequestInfo | URL,
+    init?: RequestInit | undefined
+  ): Promise<Response> => {
     const token = definedSession.accessToken;
 
     if (!token) {
-      throw new Error('Session not found')
+      throw new Error("Session not found");
     }
 
-    return (await buildAuthenticatedFetchFromAccessToken(token))(input, init)
-  }
+    return (await buildAuthenticatedFetchFromAccessToken(token))(input, init);
+  };
 
   return {
     fetch: f,
-    account: definedSession.account
-  }
+    account: definedSession.account,
+  };
 }
