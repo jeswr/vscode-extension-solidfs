@@ -22,8 +22,13 @@ async function buildAuthenticatedFetchFromAccessToken(
 
 // TODO: Fix this entire function - it is hacky, but also should not be necessary after the next auth package
 // release.
-export async function getSolidFetch(scopes: readonly string[] = [], options?: vscode.AuthenticationGetSessionOptions) {
-  let session = vscode.authentication.getSession(SOLID_AUTHENTICATION_PROVIDER_ID, scopes, options);
+export async function getSolidFetch(scopes: readonly string[], options?: vscode.AuthenticationGetSessionOptions) {
+  const session = await vscode.authentication.getSession(SOLID_AUTHENTICATION_PROVIDER_ID, scopes, options);
+
+  if (!session)
+    return;
+
+  let definedSession = session;
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
   vscode.authentication.onDidChangeSessions((sessions) => {
@@ -34,16 +39,16 @@ export async function getSolidFetch(scopes: readonly string[] = [], options?: vs
         { ...options, createIfNone: false }
       );
 
-      Promise.all([session, newSession]).then(([old, news]) => {
+      Promise.all([session, newSession]).then(async ([old, news]) => {
         if (old?.id === news?.id) {
-          session = newSession;
+          definedSession = (await newSession) || definedSession;
         }
       });
     }
   });
 
   const f = async (input: RequestInfo | URL, init?: RequestInit | undefined): Promise<Response> => {
-    const token = (await session)?.accessToken;
+    const token = definedSession.accessToken;
 
     if (!token) {
       throw new Error('Session not found')
@@ -52,8 +57,8 @@ export async function getSolidFetch(scopes: readonly string[] = [], options?: vs
     return (await buildAuthenticatedFetchFromAccessToken(token))(input, init)
   }
 
-  return { 
+  return {
     fetch: f,
-    account: (await session)?.account
+    account: definedSession.account
   }
 }
