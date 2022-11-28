@@ -20,7 +20,7 @@
 //
 // import { QueryEngine } from "@comunica/query-sparql-solid";
 import * as vscode from "vscode";
-
+import { getSolidFetch } from '@inrupt/solid-vscode-auth';
 // TODO: Investigate https://stackoverflow.com/questions/61959354/vscode-extension-add-custom-command-to-right-click-menu-in-file-explorer
 
 import LinkHeader = require("http-link-header");
@@ -54,16 +54,6 @@ export async function getPodRoot(
   return null;
 }
 
-function getFetch(
-  session: vscode.AuthenticationSession
-): typeof globalThis.fetch {
-  const { fetch: fetchFn } = session.account as any;
-  if (typeof fetchFn !== "function") {
-    throw new Error("Expected fetch to be a function");
-  }
-  return fetchFn;
-}
-
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -87,10 +77,12 @@ export function activate(context: vscode.ExtensionContext) {
   const disposable = vscode.commands.registerCommand(
     "solidfs.helloWorld",
     async () => {
-      const session = await vscode.authentication.getSession("solidauth", [], {
-        createIfNone: true,
-      });
-      console.log("created session", session);
+      // const session = await vscode.authentication.getSession("solidauth", [], {
+      //   createIfNone: true,
+      // });
+      const session = await getSolidFetch([], { createIfNone: true })
+
+      console.log("created session", session?.account.id);
 
       // const fetch = getFetch(session);
       // const webId = session.account.id;

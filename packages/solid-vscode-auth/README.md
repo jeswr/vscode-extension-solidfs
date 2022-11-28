@@ -13,7 +13,7 @@ import { getSolidDataset } from "@inrupt/solid-client";
 function loginAndFetch() {
   // Get the existing login session if the user is logged into a
   // solid Pod provider, or triggers the login flow otherwise
-  const { fetch, account } = getSolidFetch();
+  const { fetch, account } = getSolidFetch([], { createIfNone: true });
   const webid = account.id;
 
   // Fetching the dataset of the WebId
