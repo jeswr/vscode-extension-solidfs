@@ -39,6 +39,39 @@ async function buildAuthenticatedFetchFromAccessToken(
   return buildAuthenticatedFetch(crossFetch, access_token, { dpopKey });
 }
 
+// TODO: Fix this entire function - it is hacky, but also should not be necessary after the next auth package
+// release.
+async function getSolidFetch(scopes: readonly string[], options?: vscode.AuthenticationGetSessionOptions) {
+  let session = vscode.authentication.getSession(SolidAuthenticationProvider.id, scopes, options);
+
+  // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
+  vscode.authentication.onDidChangeSessions((sessions) => {
+    if (sessions.provider.id === SolidAuthenticationProvider.id) {
+      const newSession = vscode.authentication.getSession(
+        SolidAuthenticationProvider.id,
+        scopes,
+        { ...options, createIfNone: false }
+      );
+
+      Promise.all([session, newSession]).then(([old, news]) => {
+        if (old?.id === news?.id) {
+          session = newSession;
+        }
+      });
+    }
+  });
+
+  return async (input: RequestInfo | URL, init?: RequestInit | undefined): Promise<Response> => {
+    const token = (await session)?.accessToken;
+
+    if (!token) {
+      throw new Error('Session not found')
+    }
+
+    return (await buildAuthenticatedFetchFromAccessToken(token))(input, init)
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const authProvider = new SolidAuthenticationProvider(context);
 
