@@ -22,7 +22,7 @@ async function buildAuthenticatedFetchFromAccessToken(
 
 // TODO: Fix this entire function - it is hacky, but also should not be necessary after the next auth package
 // release.
-async function getSolidFetch(scopes: readonly string[], options?: vscode.AuthenticationGetSessionOptions) {
+export async function getSolidFetch(scopes: readonly string[] = [], options?: vscode.AuthenticationGetSessionOptions) {
   let session = vscode.authentication.getSession(SOLID_AUTHENTICATION_PROVIDER_ID, scopes, options);
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
@@ -42,7 +42,7 @@ async function getSolidFetch(scopes: readonly string[], options?: vscode.Authent
     }
   });
 
-  return async (input: RequestInfo | URL, init?: RequestInit | undefined): Promise<Response> => {
+  const f = async (input: RequestInfo | URL, init?: RequestInit | undefined): Promise<Response> => {
     const token = (await session)?.accessToken;
 
     if (!token) {
@@ -50,5 +50,10 @@ async function getSolidFetch(scopes: readonly string[], options?: vscode.Authent
     }
 
     return (await buildAuthenticatedFetchFromAccessToken(token))(input, init)
+  }
+
+  return { 
+    fetch: f,
+    account: (await session)?.account
   }
 }
