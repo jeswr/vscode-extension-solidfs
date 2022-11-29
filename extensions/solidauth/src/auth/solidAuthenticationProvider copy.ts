@@ -24,9 +24,8 @@ import {
   clearSessionFromStorageAll,
   getSessionIdFromStorageAll,
   getSessionFromStorage,
-} from "@inrupt/solid-client-authn-node";
-// import { StorageUtility } from "@inrupt/solid-client-authn-core";
 
+} from "@inrupt/solid-client-authn-node";
 import { interactiveLogin } from "solid-node-interactive-auth";
 import { v4 } from "uuid";
 import * as vscode from "vscode";
@@ -42,7 +41,6 @@ import {
   StorageUtility,
   loadOidcContextFromStorage,
   IStorage,
-  IStorageUtility,
 } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
 
@@ -58,14 +56,16 @@ import { ISecretStorage } from '../storage/'
 
 // TODO: Introduce
 
-export class SolidAuthenticationProvider implements AuthenticationProvider, Disposable {
+export class SolidAuthenticationProvider
+  implements AuthenticationProvider, Disposable
+{
   public static readonly id = "solidauth";
 
   private sessionChangeEmitter =
     new EventEmitter<AuthenticationProviderAuthenticationSessionsChangeEvent>();
 
   // private _disposable: Disposable;
-  private storage: StorageUtility;
+  private storage: IStorage;
 
   private s?: AuthenticationSession;
 
@@ -73,8 +73,14 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   private log = vscode.window.createOutputChannel("Solid Authentication");
 
   constructor(private readonly context: ExtensionContext) {
-    const secretStorage = new ISecretStorage(context.secrets);
-    this.storage = new StorageUtility(secretStorage, secretStorage);
+    this.storage = new ISecretStorage(context.secrets);
+
+    // this.storage = new VscodeSessionStorage(context);
+
+    // this._disposable = Disposable.from(
+    //   // TODO: Re-enable multi account support
+    //   authentication.registerAuthenticationProvider(SolidAuthenticationProvider.id, 'Solid Ecosystem Authentication', this, { supportsMultipleAccounts: false }),
+    // )
   }
 
   get onDidChangeSessions() {
@@ -84,16 +90,6 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   async getSessions(
     scopes?: readonly string[] | undefined
   ): Promise<readonly AuthenticationSession[]> {
-
-
-
-
-
-
-
-
-    return [];
-
     console.log('get session', !!this.s)
     if (scopes !== undefined && scopes.length !== 0) {
       throw new Error("Can only get sessions with undefined scope");
@@ -113,26 +109,8 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       if (maybeLoggedInSession?.info.isLoggedIn) {
         console.log('logged in session found')
         loggedInSession = maybeLoggedInSession;
-        const label = await this.storage.get(`webid-label-${loggedInSession.info.sessionId}`);
-        const secure = await this.storage.get(`solidClientAuthenticationUser:${loggedInSession.info.sessionId}`);
-        if (label && secure) {
-          
-        let d: Record<string, any> = JSON.parse(secure);
-
-        d = {
-          access_token: d.access_token,
-          privateKey: d.privateKey,
-          publicKey: d.publicKey,
-        };
-        this.s ||= toAuthenticationSession(loggedInSession, label, JSON.stringify(d))
-        
-        if (this.s) {
-          console.log('returning', this.s)
-          return [this.s]
-        }
-        // console.log('setting restored session')
-        // break;
-        }
+        const label = this.storage.get(`webid-label-${loggedInSession.info.sessionId}`)
+        break;
       }
     }
 
@@ -189,6 +167,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
     if (session) {
       this.s = session;
+      // console.log('about to create session', this.s)
       return this.s;
     }
 
@@ -196,10 +175,18 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   }
 
   async removeSession(sessionId: string): Promise<void> {
+    // await clearSessionFromStorageAll(this.storage.insecureStorage);
+    // await clearSessionFromStorageAll(this.storage.secureStorage);
+    // await clearSessionFromStorageAll(
+    //   new StorageUtility(
+    //     this.storage.secureStorage,
+    //     this.storage.insecureStorage
+    //   )
+    // );
+
     await (this.s as any)?.session.logout();
     delete this.s;
     await clearSessionFromStorageAll(this.storage);
-    // await clearSessionFromStorage()
   }
 
   /**
@@ -342,6 +329,9 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
           try {
             session = new Session({
               storage: this.storage,
+              // secureStorage: this.storage.secureStorage,
+              // insecureStorage: this.storage.insecureStorage,
+              // clientAuthentication
             });
 
             await interactiveLogin({
@@ -372,7 +362,10 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
           )
           .then((d) => d.toArray());
 
-        let label: string | undefined = bindings[0]?.get("o")?.value;
+        let label: string | undefined;
+        if (bindings[0]?.get("o")?.value) {
+          label = bindings[0]?.get("o")?.value;
+        }
 
         if (label === undefined) {
           const { webId } = session.info;
@@ -382,8 +375,42 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
             .replace(/\/+$/, "")
             .split("/");
           label = p[p.length - 1];
-          await this.storage.setForUser(session.info.sessionId, { label }, { secure: true });
+          await this.storage.set(
+            `webid-label-${session.info.sessionId}`,
+            label
+          );
         }
+
+        // TODO: See if this should be a private member of the class
+        // const storageUtility = new StorageUtility(
+        //   this.storage.secureStorage,
+        //   this.storage.insecureStorage
+        // );
+
+        // const data = await loadOidcContextFromStorage(
+        //   session.info.sessionId,
+        //   new StorageUtility(
+        //     this.storage.secureStorage,
+        //     this.storage.insecureStorage
+        //   ),
+        //   new IssuerConfigFetcher(storageUtility)
+        // );
+
+        const secure = await this.storage.get(
+          `solidClientAuthenticationUser:${session.info.sessionId}`
+        );
+
+        let d: Record<string, any> = {};
+
+        if (secure) {
+          d = JSON.parse(secure);
+        }
+
+        d = {
+          access_token: d.access_token,
+          privateKey: d.privateKey,
+          publicKey: d.publicKey,
+        };
 
         // TODO: At this point we should be hooking into whichever handler has the updated access_
         // session.onNewRefreshToken(() => {
@@ -392,80 +419,44 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
         // Listen in for the custom event indicating a new access token
         // TODO: Do removed on logout style events
-        session.on("access_token", async (access_token: string) => {
-          await this.storage.setForUser(session.info.sessionId, { access_token }, { secure: true })
-          
-          this.sessionChangeEmitter.fire({
-            changed: [
-              await toAuthenticationSession(session, this.storage),
-            ],
-            added: [],
-            removed: [],
-          });
+        session.on("access_token", async (accessToken: string) => {
+          d.access_token = accessToken;
+
+          const newSession = toAuthenticationSession(
+            session,
+            label!,
+            JSON.stringify(d)
+          );
+
+          if (newSession) {
+            this.sessionChangeEmitter.fire({
+              changed: [newSession],
+              added: [],
+              removed: [],
+            });
+          }
         });
 
-        return await toAuthenticationSession(session, this.storage);
+        return toAuthenticationSession(session, label, JSON.stringify(d));
       }
     );
   }
 }
 
-async function toAuthenticationSessionOrClear(
-  sessionId: string,
-  storage: IStorageUtility,
-): Promise<void | vscode.AuthenticationSession> {
-  try {
-    // Do not remove this await otherwise the error will reject outside
-    // of the try/catch statement
-    return await toAuthenticationSessionFromStorage(sessionId, storage)
-  } catch {
-    return await storage.deleteAllUserData(sessionId);
-  }
-}
-
-async function toAuthenticationSessionFromStorage(
-  sessionId: string,
-  storage: IStorageUtility,
-) {
-  const session = await getSessionFromStorage(sessionId, storage);
-
-  if (!session) {
-    throw new Error("Could not restore session");
-  }
-
-  return toAuthenticationSession(session, storage);
-}
-
-async function getAccessToken(sessionId: string, storage: IStorageUtility): Promise<string> {
-  return JSON.stringify({
-    access_token: await storage.getForUser(sessionId, 'access_token', { secure: true, errorIfNull: true }),
-    privateKey:   await storage.getForUser(sessionId, 'privateKey',   { secure: true, errorIfNull: true }),
-    publicKey:    await storage.getForUser(sessionId, 'publicKey',    { secure: true, errorIfNull: true }),
-  })
-}
-
-async function toAuthenticationSession(
+function toAuthenticationSession(
   session: Session,
-  storage: IStorageUtility,
-): Promise<AuthenticationSession> {
-  const { isLoggedIn, webId, sessionId } = session.info;
-
-  if (!isLoggedIn)
-    throw new Error("Cannot create authentication session for session that is not logged in");
-
-  if (!webId)
-    throw new Error("WebId is not defined for session");
-
-  return {
-    id: session.info.sessionId,
-    accessToken: await getAccessToken(sessionId, storage),
-    account: {
-      label: (await storage.getForUser(sessionId, 'label', { secure: true, errorIfNull: true }))!,
-      id: webId,
-    },
-    scopes: [
-      `webId:${webId}`,
-      `issuer:${await storage.getForUser(sessionId, 'issuer', { secure: true, errorIfNull: true })}`
-    ],
+  label: string,
+  accessToken: string
+): AuthenticationSession | undefined {
+  if (session.info.isLoggedIn && session.info.webId) {
+    return {
+      id: session.info.sessionId,
+      accessToken,
+      account: {
+        label,
+        id: session.info.webId,
+      },
+      scopes: [],
+    };
   }
 }

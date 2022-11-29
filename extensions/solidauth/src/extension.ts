@@ -40,12 +40,15 @@ export function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand("solidauth.logout", async () => {
-      const sessions = await authProvider.getSessions();
+      await authProvider.removeSession('1')
 
-      // TODO: Introduce error handling here
-      await Promise.allSettled(
-        sessions.map(async (session) => authProvider.removeSession(session.id))
-      );
+
+      // const sessions = await authProvider.getSessions();
+
+      // // TODO: Introduce error handling here
+      // await Promise.allSettled(
+      //   sessions.map(async (session) => authProvider.removeSession(session.id))
+      // );
 
       vscode.window.showInformationMessage(`Logged out of Solid Providers`);
     })

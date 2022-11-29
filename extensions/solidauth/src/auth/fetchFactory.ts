@@ -199,7 +199,6 @@ export async function buildAuthenticatedFetch(
         if (currentAccessToken !== refreshedAccessToken) {
           options?.eventEmitter?.emit("access_token", refreshedAccessToken);
         }
-
         /** * END CUSTOM CODE */
 
         currentAccessToken = refreshedAccessToken;

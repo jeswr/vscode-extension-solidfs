@@ -28,14 +28,17 @@ export class ISecretStorage implements IStorage {
   ) {}
 
   async get(key: string): Promise<string | undefined> {
+    console.log('get called for:', key)
     return this.secrets.get(this.prefix + key);
   }
 
   async set(key: string, value: string): Promise<void> {
+    console.log('set called for:', key, value)
     return this.secrets.store(this.prefix + key, value);
   }
 
   async delete(key: string): Promise<void> {
+    console.log('delete called for:', key)
     return this.secrets.delete(this.prefix + key);
   }
 }
