@@ -186,6 +186,7 @@ export default class AuthCodeRedirectHandler
       dpopKey
     );
 
+    console.log('setting', tokenSet.access_token, 'for', sessionId)
     await this.storageUtility.setForUser(
       sessionId,
       { access_token: tokenSet.access_token },

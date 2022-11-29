@@ -40,8 +40,6 @@ import type {
 import { EventEmitter } from "vscode";
 import {
   StorageUtility,
-  loadOidcContextFromStorage,
-  IStorage,
   IStorageUtility,
 } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
@@ -50,9 +48,6 @@ import {
 // https://github.com/velocityzen/meta-extractor/blob/master/index.js
 
 // TODO: Allow users to store a list of idp providers.
-
-import IssuerConfigFetcher from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
-import { VscodeSessionStorage } from "./vscodeStorage";
 import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
 import { ISecretStorage } from '../storage/'
 
@@ -67,7 +62,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   // private _disposable: Disposable;
   private storage: StorageUtility;
 
-  private s?: AuthenticationSession;
+  private sessions?: Promise<Record<string, AuthenticationSession>>;
 
   // TODO: Add logging similar to https://github.com/microsoft/vscode/blob/main/extensions/github-authentication/src/github.ts
   private log = vscode.window.createOutputChannel("Solid Authentication");
@@ -81,132 +76,99 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     return this.sessionChangeEmitter.event;
   }
 
-  async getSessions(
-    scopes?: readonly string[] | undefined
-  ): Promise<readonly AuthenticationSession[]> {
+  async _getSessions() {
+    const sessionIds = await getSessionIdFromStorageAll(this.storage);
+    const sessions = await Promise.all(
+      // TODO: Monkey patch the session here so that we can update the access_token at
+      // appropriate times
+      sessionIds.map(sessionId => toAuthenticationSessionOrClear(sessionId, this.storage))
+    );
 
-
-
-
-
-
-
-
-    return [];
-
-    console.log('get session', !!this.s)
-    if (scopes !== undefined && scopes.length !== 0) {
-      throw new Error("Can only get sessions with undefined scope");
-    }
-
-    if (this.s) {
-      return [this.s]
-    }
-
-    const sessions = await getSessionIdFromStorageAll(this.storage);
-    console.log('about to iterate through sessions', sessions.length)
-
-    let loggedInSession;
+    const sessionsMap: Record<string, AuthenticationSession> = {}
     for (const session of sessions) {
-      const maybeLoggedInSession = await getSessionFromStorage(session, this.storage);
-
-      if (maybeLoggedInSession?.info.isLoggedIn) {
-        console.log('logged in session found')
-        loggedInSession = maybeLoggedInSession;
-        const label = await this.storage.get(`webid-label-${loggedInSession.info.sessionId}`);
-        const secure = await this.storage.get(`solidClientAuthenticationUser:${loggedInSession.info.sessionId}`);
-        if (label && secure) {
-          
-        let d: Record<string, any> = JSON.parse(secure);
-
-        d = {
-          access_token: d.access_token,
-          privateKey: d.privateKey,
-          publicKey: d.publicKey,
-        };
-        this.s ||= toAuthenticationSession(loggedInSession, label, JSON.stringify(d))
-        
-        if (this.s) {
-          console.log('returning', this.s)
-          return [this.s]
-        }
-        // console.log('setting restored session')
-        // break;
-        }
+      if (session) {
+        sessionsMap[session.id] = session
       }
     }
 
+    return sessionsMap;
+  }
 
-    // TODO: work out how to make this work
-    // const sessions = await this.storage.getSessions();
+  async getSessions(
+    scopes?: readonly string[] | undefined
+  ): Promise<readonly AuthenticationSession[]> {
+    // If we do not have any sessions cached then recover them from the storage
+    if (!this.sessions) {
+      this.sessions = this._getSessions();
+    }
 
-    // TODO: Go through session restoration with NickAS.
-    // console.log('retrieved', sessions.length)
+    let allSessions = Object.values(await this.sessions);
 
-    // const results = await Promise.all(
-    //   sessions.map(async session => {
-    //     try {
-    //       await session.;
-    //     } catch (e) {
-    //       return undefined
-    //     }
-    // }))
+    if (scopes) {
+      allSessions = allSessions.filter(session => scopes.every(scope => session.scopes.includes(scope)))
+    }
 
-    // console.log(results)
-
-    // const mappedSessions = await Promise.all(
-    //   sessions.map(
-    //     async session =>
-    //       toAuthenticationSession(
-    //         session,
-    //         await this._storage.insecureStorage.get(`webid-label-${session.info.sessionId}`) ?? ''
-    //       )
-    //   )
-    // );
-
-    // console.log('mapped', sessions.length)
-
-    // return mappedSessions.filter((session): session is AuthenticationSession => session !== undefined)
-
-    // console.log('get session called with', scopes);
-    // if (scopes !== undefined && scopes.length !== 0) {
-    //   throw new Error("Can only get sessions with undefined scope");
-    // }
-
-    // console.log('get session called', this.s)
-
-    return this.s ? [this.s] : [];
+    return allSessions;
   }
 
   async createSession(
     scopes: readonly string[]
   ): Promise<AuthenticationSession> {
+
+    // TODO: Fix this so that we can used the webId and issuer scopes
     if (scopes.length !== 0) {
       throw new Error("Can only create sessions with no specified scopes");
     }
 
-    const session = await this.login();
+    let session: AuthenticationSession | undefined;
+    
+    await (this.sessions = this.sessions?.then(async sessions => {
+      session = await this.login();
+      if (session) {
+        sessions[session.id] = session;
+      }
+      return sessions;
+    }))
 
     if (session) {
-      this.s = session;
-      return this.s;
+      return session;
     }
 
     throw new Error("Could not login");
   }
 
-  async removeSession(sessionId: string): Promise<void> {
-    await (this.s as any)?.session.logout();
-    delete this.s;
+  async removeAllSessions() {
     await clearSessionFromStorageAll(this.storage);
-    // await clearSessionFromStorage()
+    this.sessions = undefined;
   }
+
+  async removeSession(sessionId: string): Promise<void> {
+    this.storage.deleteAllUserData(sessionId);
+
+    if (this.sessions) {
+      this.sessions = this.sessions.then(sessions => {
+        delete sessions[sessionId];
+        return sessions;
+      })
+    }
+  }
+
+  // async removeSession(sessionId: string): Promise<void> {
+    
+    
+  //   // await (this.sessions as any)?.session.logout();
+  //   // delete this.sessions;
+
+  //   // await clearSessionFromStorageAll(this.storage);
+  //   // await clearSessionFromStorage()
+  // }
 
   /**
    * Dispose the registered services
    */
   // eslint-disable-next-line class-methods-use-this
   public async dispose() {
+    // TODO: Dispose of refresh token process here
     // this._disposable.dispose();
   }
 
@@ -304,9 +266,8 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         const clientName = `${vscode.env.appName} (${this.context.extension.packageJSON.name})`;
 
         try {
-          const redirectUrl = `${vscode.env.uriScheme}://${
-            this.context.extension.id
-          }/${v4()}/redirect`;
+          const redirectUrl = `${vscode.env.uriScheme}://${this.context.extension.id
+            }/${v4()}/redirect`;
 
           await session.login({
             redirectUrl,
@@ -394,7 +355,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         // TODO: Do removed on logout style events
         session.on("access_token", async (access_token: string) => {
           await this.storage.setForUser(session.info.sessionId, { access_token }, { secure: true })
-          
+
           this.sessionChangeEmitter.fire({
             changed: [
               await toAuthenticationSession(session, this.storage),
@@ -439,8 +400,8 @@ async function toAuthenticationSessionFromStorage(
 async function getAccessToken(sessionId: string, storage: IStorageUtility): Promise<string> {
   return JSON.stringify({
     access_token: await storage.getForUser(sessionId, 'access_token', { secure: true, errorIfNull: true }),
-    privateKey:   await storage.getForUser(sessionId, 'privateKey',   { secure: true, errorIfNull: true }),
-    publicKey:    await storage.getForUser(sessionId, 'publicKey',    { secure: true, errorIfNull: true }),
+    privateKey: await storage.getForUser(sessionId, 'privateKey', { secure: true, errorIfNull: true }),
+    publicKey: await storage.getForUser(sessionId, 'publicKey', { secure: true, errorIfNull: true }),
   })
 }
 
@@ -454,7 +415,7 @@ async function toAuthenticationSession(
     throw new Error("Cannot create authentication session for session that is not logged in");
 
   if (!webId)
-    throw new Error("WebId is not defined for session");
+    throw new Error("webId is not defined for session");
 
   return {
     id: session.info.sessionId,

@@ -18,72 +18,72 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-import type { IStorage } from "@inrupt/solid-client-authn-core";
-import { Session } from "@inrupt/solid-client-authn-node";
-import { getClientAuthenticationWithDependencies } from "@inrupt/solid-client-authn-node/dist/dependencies";
-import type { ExtensionContext } from "vscode";
-import { IMementoStorage, ISecretStorage } from "../storage";
+// import type { IStorage } from "@inrupt/solid-client-authn-core";
+// import { Session } from "@inrupt/solid-client-authn-node";
+// import { getClientAuthenticationWithDependencies } from "@inrupt/solid-client-authn-node/dist/dependencies";
+// import type { ExtensionContext } from "vscode";
+// import { ISecretStorage } from "../storage";
 
-function asArray<T>(str: T, error = false): string[] {
-  if (typeof str === "string") {
-    const arr = JSON.parse(str);
-    if (Array.isArray(arr) && arr.every((elem) => typeof elem === "string")) {
-      return arr;
-    }
-  }
+// function asArray<T>(str: T, error = false): string[] {
+//   if (typeof str === "string") {
+//     const arr = JSON.parse(str);
+//     if (Array.isArray(arr) && arr.every((elem) => typeof elem === "string")) {
+//       return arr;
+//     }
+//   }
 
-  if (error) throw new Error("Expected an array of strings");
+//   if (error) throw new Error("Expected an array of strings");
 
-  return [];
-}
+//   return [];
+// }
 
-function getSessions(storage: IMementoStorage) {
-  return asArray(storage.getSync("solidClientAuthn:registeredSessions"));
-}
+// function getSessions(storage: IMementoStorage) {
+//   return asArray(storage.getSync("solidClientAuthn:registeredSessions"));
+// }
 
-interface Storages {
-  readonly secureStorage: IStorage;
-  readonly insecureStorage: IStorage;
-}
+// interface Storages {
+//   readonly secureStorage: IStorage;
+//   readonly insecureStorage: IStorage;
+// }
 
-export class VscodeSessionStorage implements Storages {
-  public readonly secureStorage: IStorage;
+// export class VscodeSessionStorage implements Storages {
+//   public readonly secureStorage: IStorage;
 
-  public readonly insecureStorage: IStorage;
+//   public readonly insecureStorage: IStorage;
 
-  private get clientAuthentication() {
-    return getClientAuthenticationWithDependencies(this);
-  }
+//   private get clientAuthentication() {
+//     return getClientAuthenticationWithDependencies(this);
+//   }
 
-  constructor(context: ExtensionContext) {
-    this.secureStorage = new ISecretStorage(context.secrets);
-    this.insecureStorage = new IMementoStorage(context.workspaceState);
-  }
+//   constructor(context: ExtensionContext) {
+//     this.secureStorage = new ISecretStorage(context.secrets);
+//     this.insecureStorage = new IMementoStorage(context.workspaceState);
+//   }
 
-  getSessionIds(): string[] {
-    return getSessions(this.insecureStorage as IMementoStorage);
-  }
+//   getSessionIds(): string[] {
+//     return getSessions(this.insecureStorage as IMementoStorage);
+//   }
 
-  async getSessionFromId(sessionId: string) {
-    const { clientAuthentication } = this;
+//   async getSessionFromId(sessionId: string) {
+//     const { clientAuthentication } = this;
 
-    const sessionInfo = await clientAuthentication.getSessionInfo(sessionId);
-    if (sessionInfo === undefined) {
-      return undefined;
-    }
+//     const sessionInfo = await clientAuthentication.getSessionInfo(sessionId);
+//     if (sessionInfo === undefined) {
+//       return undefined;
+//     }
 
-    return new Session({
-      sessionInfo,
-      clientAuthentication,
-    });
-  }
+//     return new Session({
+//       sessionInfo,
+//       clientAuthentication,
+//     });
+//   }
 
-  async getSessions() {
-    const sessions = await Promise.all(
-      this.getSessionIds().map((id) => this.getSessionFromId(id))
-    );
-    return sessions.filter(
-      (session): session is Session => session !== undefined
-    );
-  }
-}
+//   async getSessions() {
+//     const sessions = await Promise.all(
+//       this.getSessionIds().map((id) => this.getSessionFromId(id))
+//     );
+//     return sessions.filter(
+//       (session): session is Session => session !== undefined
+//     );
+//   }
+// }

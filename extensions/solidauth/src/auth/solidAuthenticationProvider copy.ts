@@ -49,8 +49,6 @@ import {
 
 // TODO: Allow users to store a list of idp providers.
 
-import IssuerConfigFetcher from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
-import { VscodeSessionStorage } from "./vscodeStorage";
 import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
 import { ISecretStorage } from '../storage/'
 

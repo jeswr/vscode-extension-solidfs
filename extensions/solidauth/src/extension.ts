@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
       "Solid Ecosystem Authentication",
       authProvider,
       // TODO: Introduce multi-account support
-      { supportsMultipleAccounts: false }
+      { supportsMultipleAccounts: true }
     ),
 
     vscode.commands.registerCommand("solidauth.login", async () => {
@@ -40,7 +40,8 @@ export function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand("solidauth.logout", async () => {
-      await authProvider.removeSession('1')
+      await authProvider.removeAllSessions();
+      // await authProvide
 
 
       // const sessions = await authProvider.getSessions();
