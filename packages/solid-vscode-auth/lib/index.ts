@@ -41,12 +41,17 @@ async function buildAuthenticatedFetchFromAccessToken(
   return buildAuthenticatedFetch(crossFetch, access_token, { dpopKey });
 }
 
+export interface VscodeSolidSession {
+  fetch: typeof globalThis.fetch;
+  account: vscode.AuthenticationSession["account"];
+}
+
 // TODO: Fix this entire function - it is hacky, but also should not be necessary after the next auth package
 // release.
 export async function getSolidFetch(
   scopes: readonly string[],
   options?: vscode.AuthenticationGetSessionOptions
-) {
+): Promise<VscodeSolidSession | undefined> {
   const session = await vscode.authentication.getSession(
     SOLID_AUTHENTICATION_PROVIDER_ID,
     scopes,

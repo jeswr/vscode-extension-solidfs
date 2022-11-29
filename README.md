@@ -18,14 +18,14 @@ npm run package
 
 # Link solidauth to any other extensions that
 # require it in their environment (such as solidfs)
-npm run solidauth:link
+# npm run solidauth:link
 npm run solidauth:install
 ```
 
 *Note* If you make changes to `solidauth` and want to test the changes in another package make sure to re-run
 ```shell
 npm run package
-npm run solidauth:link
+# npm run solidauth:link
 npm run solidauth:install
 ```
 
@@ -43,7 +43,7 @@ cd ./vscode-extension-solidfs
 npm install
 npm run build
 npm run package
-npm run solidauth:link
+# npm run solidauth:link
 npm run solidauth:install
 code ./extensions/solidfs/
 ```

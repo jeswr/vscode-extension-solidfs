@@ -19,7 +19,6 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 import type { QueryEngine } from "@comunica/query-sparql-solid";
-import type { Session } from "@inrupt/solid-client-authn-node";
 import type { Bindings } from "@rdfjs/types";
 import { DataFactory as DF } from "n3";
 import * as vscode from "vscode";
@@ -29,6 +28,7 @@ import {
   createContainerAt,
   overwriteFile,
 } from "@inrupt/solid-client";
+import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
 const Container = DF.namedNode("http://www.w3.org/ns/ldp#Container");
@@ -60,7 +60,10 @@ function getContainerData(binding: Bindings): [string, vscode.FileType] {
 // TODO: Create a research challenge for SEPA style updates in Comunica
 
 export class SolidFS implements vscode.FileSystemProvider {
-  private session: Session | undefined | Promise<Session | undefined>;
+  private session:
+    | VscodeSolidSession
+    | undefined
+    | Promise<VscodeSolidSession | undefined>;
 
   private root: string;
 
@@ -69,7 +72,10 @@ export class SolidFS implements vscode.FileSystemProvider {
   private stats: Record<string, boolean> = { "/": true };
 
   constructor(options: {
-    session: Session | undefined | Promise<Session | undefined>;
+    session:
+      | VscodeSolidSession
+      | undefined
+      | Promise<VscodeSolidSession | undefined>;
     root: string;
     engine: QueryEngine;
   }) {
@@ -134,6 +140,7 @@ export class SolidFS implements vscode.FileSystemProvider {
       );
 
       if (fileType !== undefined) {
+        console.log('setting filetype', fileType, 'for', uri.path)
         this.stats[uri.path] = fileType;
       }
 
@@ -153,7 +160,7 @@ export class SolidFS implements vscode.FileSystemProvider {
       };
     }
 
-    // console.log("abotu to throw stat error for", uri);
+    console.log("abotu to throw stat error for", uri);
 
     throw vscode.FileSystemError.FileNotFound(uri);
 
@@ -171,37 +178,57 @@ export class SolidFS implements vscode.FileSystemProvider {
   // in the container metadata.
   // TODO: See if we can just determine this based on trailing slash
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-    // console.log("read directory called on", uri);
+    console.log("read directory called on", uri);
     const source = `${this.root}${
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
-    const bindings = await this.engine.queryBindings(
-      `
-    SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
-      {
-        "@comunica/actor-http-inrupt-solid-client-authn:session": await this
-          .session,
-        sources: [source],
-      }
-    );
+    try {
 
-    return bindings
-      .map<[string, vscode.FileType]>((binding) => {
-        const str = binding.get("o")!.value;
-        const isDir = str.endsWith("/");
-        const path = str.slice(
-          this.root.length - 1,
-          str.length - Number(isDir)
-        );
-        this.stats[path] = isDir;
+      const session = await this.session;
 
-        return [
-          str.slice(this.root.length - 1, str.length - Number(isDir)),
-          isDir ? vscode.FileType.Directory : vscode.FileType.File,
-        ];
-      })
-      .toArray();
+      console.log('fetch object is', session, typeof session?.fetch)
+
+      const bindings = await this.engine.queryBindings(
+        `
+      SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
+        {
+          "@comunica/actor-http-inrupt-solid-client-authn:session": {
+            fetch: session?.fetch,
+            info: {
+              webId: session?.account.id,
+              isLoggedIn: true,
+            },
+          },
+          sources: [source],
+        }
+      );
+  
+      const res = await bindings
+        .map<[string, vscode.FileType]>((binding) => {
+          const str = binding.get("o")!.value;
+          const isDir = str.endsWith("/");
+          const path = str.slice(
+            this.root.length - 1,
+            str.length - Number(isDir)
+          );
+          this.stats[path] = isDir;
+  
+          return [
+            str.slice(this.root.length - 1, str.length - Number(isDir)),
+            isDir ? vscode.FileType.Directory : vscode.FileType.File,
+          ];
+        })
+        .toArray();
+  
+      console.log('returning ', res)
+      return res;
+    } catch (e) {
+      // TODO: Properly log this
+      console.error('error reading directory', e)
+    }
+
+    return []
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
