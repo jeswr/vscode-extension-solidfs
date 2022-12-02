@@ -22,15 +22,12 @@ import type { fetch as crossFetch } from "cross-fetch";
 import { Headers as CrossFetchHeaders } from "cross-fetch";
 import type { EventEmitter } from "events";
 /* eslint-disable import/no-unresolved */
-import {
-  REFRESH_BEFORE_EXPIRATION_SECONDS,
-  EVENTS,
-} from "@inrupt/solid-client-authn-core/dist/constant";
-import type { ITokenRefresher } from "@inrupt/solid-client-authn-core/dist/login/oidc/refresh/ITokenRefresher";
+const REFRESH_BEFORE_EXPIRATION_SECONDS = 20;
+import { EVENTS } from "@inrupt/solid-client-authn-core";
 import type { KeyPair } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
-import { createDpopHeader } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
-import { OidcProviderError } from "@inrupt/solid-client-authn-core/dist/errors/OidcProviderError";
-import { InvalidResponseError } from "@inrupt/solid-client-authn-core/dist/errors/InvalidResponseError";
+import type { ITokenRefresher } from "@inrupt/solid-client-authn-core/dist/login/oidc/refresh/ITokenRefresher";
+import { SignJWT } from "jose";
+import { v4 } from "uuid";
 /* eslint-enable import/no-unresolved */
 
 export type RefreshOptions = {
@@ -38,6 +35,46 @@ export type RefreshOptions = {
   refreshToken: string;
   tokenRefresher: ITokenRefresher;
 };
+
+/**
+ * Normalizes a URL in order to generate the DPoP token based on a consistent scheme.
+ *
+ * @param audience The URL to normalize.
+ * @returns The normalized URL as a string.
+ * @hidden
+ */
+function normalizeHTU(audience: string): string {
+  const audienceUrl = new URL(audience);
+  return new URL(audienceUrl.pathname, audienceUrl.origin).toString();
+}
+
+/**
+ * Creates a DPoP header according to https://tools.ietf.org/html/draft-fett-oauth-dpop-04,
+ * based on the target URL and method, using the provided key.
+ *
+ * @param audience Target URL.
+ * @param method HTTP method allowed.
+ * @param key Key used to sign the token.
+ * @returns A JWT that can be used as a DPoP Authorization header.
+ */
+export async function createDpopHeader(
+  audience: string,
+  method: string,
+  dpopKey: KeyPair
+): Promise<string> {
+  return new SignJWT({
+    htu: normalizeHTU(audience),
+    htm: method.toUpperCase(),
+    jti: v4(),
+  })
+    .setProtectedHeader({
+      alg: "ES256",
+      jwk: dpopKey.publicKey,
+      typ: "dpop+jwt",
+    })
+    .setIssuedAt()
+    .sign(dpopKey.privateKey, {});
+}
 
 /**
  * If expires_in isn't specified for the access token, we assume its lifetime is
@@ -113,7 +150,7 @@ async function makeAuthenticatedRequest(
   );
 }
 
-async function refreshAccessToken(
+export async function refreshAccessToken(
   refreshOptions: RefreshOptions,
   dpopKey?: KeyPair,
   eventEmitter?: EventEmitter
@@ -172,90 +209,94 @@ export async function buildAuthenticatedFetch(
   }
 ): Promise<typeof crossFetch> {
   let currentAccessToken = accessToken;
-  let latestTimeout: Parameters<typeof clearTimeout>[0];
   const currentRefreshOptions: RefreshOptions | undefined =
     options?.refreshOptions;
   // Setup the refresh timeout outside of the authenticated fetch, so that
   // an idle app will not get logged out if it doesn't issue a fetch before
   // the first expiration date.
   if (currentRefreshOptions !== undefined) {
-    const proactivelyRefreshToken = async () => {
-      try {
-        const {
-          accessToken: refreshedAccessToken,
-          refreshToken,
-          expiresIn,
-        } = await refreshAccessToken(
-          currentRefreshOptions,
-          // If currentRefreshOptions is defined, options is necessarily defined too.
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          options!.dpopKey,
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          options!.eventEmitter
-        );
-        // Update the tokens in the closure if appropriate.
+    // TODO: Handle this logic inside the solidAuthenticationProvider & make sure that the refresh token
+    // is saved to secretStorage so that we can continue refreshing if a token is restored after a brief
+    // period of downtime.
 
-        /** * BEGIN CUSTOM CODE */
-        if (currentAccessToken !== refreshedAccessToken) {
-          options?.eventEmitter?.emit("access_token", refreshedAccessToken);
-        }
-        /** * END CUSTOM CODE */
 
-        currentAccessToken = refreshedAccessToken;
-        if (refreshToken !== undefined) {
-          currentRefreshOptions.refreshToken = refreshToken;
-        }
-        // Each time the access token is refreshed, we must plan fo the next
-        // refresh iteration.
-        clearTimeout(latestTimeout);
-        latestTimeout = setTimeout(
-          proactivelyRefreshToken,
-          computeRefreshDelay(expiresIn) * 1000
-        );
-        // If currentRefreshOptions is defined, options is necessarily defined too.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
-      } catch (e) {
-        // It is possible that an underlying library throws an error on refresh flow failure.
-        // If we used a log framework, the error could be logged at the `debug` level,
-        // but otherwise the failure of the refresh flow should not blow up in the user's
-        // face, so we just swallow the error.
-        if (e instanceof OidcProviderError) {
-          // The OIDC provider refused to refresh the access token and returned an error instead.
-          /* istanbul ignore next 100% coverage would require testing that nothing
-              happens here if the emitter is undefined, which is more cumbersome
-              than what it's worth. */
-          options?.eventEmitter?.emit(
-            EVENTS.ERROR,
-            e.error,
-            e.errorDescription
-          );
-          /* istanbul ignore next 100% coverage would require testing that nothing
-            happens here if the emitter is undefined, which is more cumbersome
-            than what it's worth. */
-          options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
-        }
-        if (
-          e instanceof InvalidResponseError &&
-          e.missingFields.includes("access_token")
-        ) {
-          // In this case, the OIDC provider returned a non-standard response, but
-          // did not specify that it was an error. We cannot refresh nonetheless.
-          /* istanbul ignore next 100% coverage would require testing that nothing
-            happens here if the emitter is undefined, which is more cumbersome
-            than what it's worth. */
-          options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
-        }
-      }
-    };
-    latestTimeout = setTimeout(
-      proactivelyRefreshToken,
-      // If currentRefreshOptions is defined, options is necessarily defined too.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      computeRefreshDelay(options!.expiresIn) * 1000
-    );
+    // const proactivelyRefreshToken = async () => {
+    //   try {
+    //     const {
+    //       accessToken: refreshedAccessToken,
+    //       refreshToken,
+    //       expiresIn,
+    //     } = await refreshAccessToken(
+    //       currentRefreshOptions,
+    //       // If currentRefreshOptions is defined, options is necessarily defined too.
+    //       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //       options!.dpopKey,
+    //       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //       options!.eventEmitter
+    //     );
+    //     // Update the tokens in the closure if appropriate.
+
+    //     /** * BEGIN CUSTOM CODE */
+    //     if (currentAccessToken !== refreshedAccessToken) {
+    //       options?.eventEmitter?.emit("access_token", refreshedAccessToken);
+    //     }
+    //     /** * END CUSTOM CODE */
+
+    //     currentAccessToken = refreshedAccessToken;
+    //     if (refreshToken !== undefined) {
+    //       currentRefreshOptions.refreshToken = refreshToken;
+    //     }
+    //     // Each time the access token is refreshed, we must plan fo the next
+    //     // refresh iteration.
+    //     clearTimeout(latestTimeout);
+    //     latestTimeout = setTimeout(
+    //       proactivelyRefreshToken,
+    //       computeRefreshDelay(expiresIn) * 1000
+    //     );
+    //     // If currentRefreshOptions is defined, options is necessarily defined too.
+    //     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //     options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
+    //   } catch (e) {
+    //     // It is possible that an underlying library throws an error on refresh flow failure.
+    //     // If we used a log framework, the error could be logged at the `debug` level,
+    //     // but otherwise the failure of the refresh flow should not blow up in the user's
+    //     // face, so we just swallow the error.
+    //     if (e instanceof OidcProviderError) {
+    //       // The OIDC provider refused to refresh the access token and returned an error instead.
+    //       /* istanbul ignore next 100% coverage would require testing that nothing
+    //           happens here if the emitter is undefined, which is more cumbersome
+    //           than what it's worth. */
+    //       options?.eventEmitter?.emit(
+    //         EVENTS.ERROR,
+    //         e.error,
+    //         e.errorDescription
+    //       );
+    //       /* istanbul ignore next 100% coverage would require testing that nothing
+    //         happens here if the emitter is undefined, which is more cumbersome
+    //         than what it's worth. */
+    //       options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
+    //     }
+    //     if (
+    //       e instanceof InvalidResponseError &&
+    //       e.missingFields.includes("access_token")
+    //     ) {
+    //       // In this case, the OIDC provider returned a non-standard response, but
+    //       // did not specify that it was an error. We cannot refresh nonetheless.
+    //       /* istanbul ignore next 100% coverage would require testing that nothing
+    //         happens here if the emitter is undefined, which is more cumbersome
+    //         than what it's worth. */
+    //       options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
+    //     }
+    //   }
+    // };
+    // latestTimeout = setTimeout(
+    //   proactivelyRefreshToken,
+    //   // If currentRefreshOptions is defined, options is necessarily defined too.
+    //   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    //   computeRefreshDelay(options!.expiresIn) * 1000
+    // );
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
+    // options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
   } else if (options !== undefined && options.eventEmitter !== undefined) {
     // If no refresh options are provided, the session expires when the access token does.
     const expirationTimeout = setTimeout(() => {

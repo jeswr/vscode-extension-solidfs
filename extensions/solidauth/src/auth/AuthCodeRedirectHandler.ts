@@ -193,6 +193,36 @@ export default class AuthCodeRedirectHandler
       { secure: true }
     );
 
+    if (typeof tokenSet.expires_at === 'number') {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_in: tokenSet.expires_at.toString() },
+        { secure: true }
+      );
+    } else if (typeof tokenSet.expires_in === 'number') {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_at: (tokenSet.expires_in + Date.now()).toString() },
+        { secure: true }
+      );
+    }
+
+    if (typeof tokenSet.expires_in === 'number') {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_in: tokenSet.expires_in.toString() },
+        { secure: true }
+      );
+    }
+
+    if (typeof tokenSet.refresh_token === 'string') {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { refresh_token: tokenSet.refresh_token },
+        { secure: true }
+      );
+    }
+
     const sessionInfo = await this.sessionInfoManager.get(sessionId);
     if (!sessionInfo) {
       throw new Error(
