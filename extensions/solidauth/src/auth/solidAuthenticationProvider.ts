@@ -119,7 +119,15 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       })
     }
 
-    let allSessions = Object.values(await this.sessions);
+    let allSessions = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Restoring existing Solid Logins",
+        cancellable: false,
+      },
+      // TODO Make this cancellable
+      async () => Object.values(await this.sessions!)
+    )
 
     if (scopes) {
       allSessions = allSessions.filter(session => scopes.every(scope => session.scopes.includes(scope)))
@@ -133,6 +141,8 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     scopes: readonly string[]
   ): Promise<AuthenticationSession> {
 
+    console.log('create session', scopes)
+
     // TODO: Fix this so that we can used the webId and issuer scopes
     if (scopes.length !== 0) {
       throw new Error("Can only create sessions with no specified scopes");
@@ -140,15 +150,29 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
     let session: AuthenticationSession | undefined;
 
+    console.log('pre await sessions')
+
     await (this.sessions = this.sessions?.then(async sessions => {
+      console.log('pre await login')
       session = await this.login();
+      console.log('pos await login')
       if (session) {
         sessions[session.id] = session;
       }
       // Trigger refresh flow as appropriate and set timeout where appropriate
-      await this.handleRefresh();
+      console.log('pre handle refresh')
+      try {
+        // DO NOT AWAIT THIS - it should be a valid session
+        // immediately upon log in and it causes blocking (that we should debug)
+        this.handleRefresh();
+      } catch (e) {
+        console.log('handle refresh errored with', e)
+      }
+      console.log('post handle refresh')
       return sessions;
     }))
+
+    console.log('sessions resolved', session)
 
     if (session) {
       return session;
