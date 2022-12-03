@@ -248,7 +248,20 @@ export class SolidFS implements vscode.FileSystemProvider {
       const session = await this.session;
       if (session) {
         const result = await session.fetch(`${this.root}${uri.path.slice(1)}`);
-        return new Uint8Array(await result.arrayBuffer());
+        // TODO: Do not just return an empty buffer when fetch is not working
+        if (result.status === 200) {
+          return new Uint8Array(await result.arrayBuffer());
+        }
+
+        if (result.status === 406) {
+          // This is a hack, currently ESS gives a 406 error when we are retrieving
+          // an empty file
+          // TODO: Error here once we have fixed the empty-file giving 406 error
+          return Uint8Array.from([]);
+        }
+
+        // TODO: Be more granular with permissions here (e.g. throw )
+        vscode.FileSystemError.Unavailable(await result.text())
       }
     } catch (e) {
       // noop

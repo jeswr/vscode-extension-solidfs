@@ -222,9 +222,14 @@ export async function activate(context: vscode.ExtensionContext) {
     disposable,
 
     vscode.commands.registerCommand('solidfs.clear', async () => {
+      console.log('clearing workspace')
       await context.workspaceState.update("solidfs", undefined);
+
+      console.log(
+        'update workspace state',
+        await context.workspaceState.get("solidfs", undefined)
+      )
     })
-    
   );
 }
 
