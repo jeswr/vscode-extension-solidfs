@@ -36,6 +36,11 @@ export class ISecretStorage implements IStorage {
   }
 
   async delete(key: string): Promise<void> {
-    return this.secrets.delete(this.prefix + key);
+    try {
+      await this.secrets.delete(this.prefix + key)
+    } catch (e) {
+      // Suppress rejections as they occur when we
+      // try to delete a key that is not set
+    }
   }
 }

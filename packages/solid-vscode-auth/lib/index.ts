@@ -52,13 +52,19 @@ export async function getSolidFetch(
   scopes: readonly string[],
   options?: vscode.AuthenticationGetSessionOptions
 ): Promise<VscodeSolidSession | undefined> {
+  console.log('get solid fetch started')
+
   const session = await vscode.authentication.getSession(
     SOLID_AUTHENTICATION_PROVIDER_ID,
     scopes,
     options
   );
 
+  console.log('session retrieved')
+
   if (!session) return;
+
+  console.log('session not empty')
 
   let definedSession = session;
 
@@ -79,6 +85,8 @@ export async function getSolidFetch(
     }
   });
 
+  console.log('creating fetch function')
+
   const f = async (
     input: RequestInfo | URL,
     init?: RequestInit | undefined
@@ -91,6 +99,8 @@ export async function getSolidFetch(
 
     return (await buildAuthenticatedFetchFromAccessToken(token))(input, init);
   };
+
+  console.log('fetch function created')
 
   return {
     fetch: f,

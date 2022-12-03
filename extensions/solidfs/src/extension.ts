@@ -143,6 +143,8 @@ export async function activate(context: vscode.ExtensionContext) {
       const webId = session?.account.id;
       const fetch = session?.fetch;
 
+      console.log('solidfs opened with', !!fetch, webId)
+
       if (!webId || !fetch) return;
 
       await vscode.window.withProgress(
@@ -188,6 +190,8 @@ export async function activate(context: vscode.ExtensionContext) {
               // Suppress errors from registering an existing fs provider
             }
 
+            console.log('about to update workspace folder');
+
             vscode.workspace.updateWorkspaceFolders(
               vscode.workspace.workspaceFolders
                 ? vscode.workspace.workspaceFolders.length
@@ -197,9 +201,13 @@ export async function activate(context: vscode.ExtensionContext) {
                 uri: vscode.Uri.parse(
                   `solidfs-${hashCode(webId)}-${hashCode(root)}:/`
                 ),
-                name: new URL(webId).pathname.split("/").find((x) => x !== ""),
+                // name: new URL(webId).pathname.split("/").find((x) => x !== ""),
+                name: session.account.label
               }
             );
+
+            console.log('after update workspace folder');
+
           }
         }
       );

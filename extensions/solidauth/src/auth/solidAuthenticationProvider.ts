@@ -128,6 +128,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     return allSessions;
   }
 
+  // TODO: See if we need to handle the `addSession` ourself
   async createSession(
     scopes: readonly string[]
   ): Promise<AuthenticationSession> {
@@ -157,18 +158,45 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   }
 
   async removeAllSessions() {
+    console.log('about to call clear session from storage all')
     await clearSessionFromStorageAll(this.storage);
+    console.log('after calling clear session from storage all')
+
+    const sessions = await this.sessions
+    const sessionList = sessions ? Object.values(sessions) : [];
     this.sessions = undefined;
+
+    if (sessionList.length > 0) {
+      this.sessionChangeEmitter.fire({
+        changed: [],
+        added: [],
+        removed: sessionList,
+      });
+    }
   }
 
   async removeSession(sessionId: string): Promise<void> {
     this.storage.deleteAllUserData(sessionId);
 
     if (this.sessions) {
+      let removeSession = (await this.sessions)[sessionId];
+
       this.sessions = this.sessions.then(sessions => {
         delete sessions[sessionId];
         return sessions;
       });
+
+      // TODO: See if we actually need to fire the event ourselves
+      // in this case or if it is handled by vscode alreday
+      if (removeSession) {
+        this.sessionChangeEmitter.fire({
+          changed: [],
+          added: [],
+          removed: [
+            removeSession
+          ],
+        });
+      }
     }
   }
 
@@ -211,6 +239,9 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       const currentHandler = (s2 as any).clientAuthentication
         .redirectHandler.handleables[0];
 
+      // TODO: See if we need to be handling redirects as part of the refresh flow (I don't *think* we do).
+      // const redirectUrl = await this.storage.getForUser(sessionId, 'redirectUrl', { secure: true, errorIfNull: true })
+
       const result = await refreshAccessToken(
         {
           refreshToken: (await this.storage.getForUser(sessionId, 'refresh_token', { secure: true, errorIfNull: true }))!,
@@ -228,7 +259,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         await this.storage.deleteForUser(sessionId, 'expires_at')
       }
 
-      await this.storage.setForUser(sessionId, { 'access_token': result.accessToken }, { secure: true })
+      // await this.storage.setForUser(sessionId, { 'access_token': result.accessToken }, { secure: true })
 
       if (typeof result.refreshToken === 'string') {
         await this.storage.setForUser(sessionId, { 'refresh_token': result.refreshToken }, { secure: true })
@@ -534,13 +565,13 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         // session.on("access_token", async (access_token: string) => {
         //   await this.storage.setForUser(session.info.sessionId, { access_token }, { secure: true })
 
-        //   this.sessionChangeEmitter.fire({
-        //     changed: [
-        //       await toAuthenticationSession(session, this.storage),
-        //     ],
-        //     added: [],
-        //     removed: [],
-        //   });
+          // this.sessionChangeEmitter.fire({
+          //   changed: [
+          //     await toAuthenticationSession(session, this.storage),
+          //   ],
+          //   added: [],
+          //   removed: [],
+          // });
         // });
 
         return await toAuthenticationSession(session, this.storage);
