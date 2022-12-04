@@ -140,7 +140,7 @@ export class SolidFS implements vscode.FileSystemProvider {
       );
 
       if (fileType !== undefined) {
-        console.log('setting filetype', fileType, 'for', uri.path)
+        console.log("setting filetype", fileType, "for", uri.path);
         this.stats[uri.path] = fileType;
       }
 
@@ -184,10 +184,9 @@ export class SolidFS implements vscode.FileSystemProvider {
     }`;
 
     try {
-
       const session = await this.session;
 
-      console.log('fetch object is', session, typeof session?.fetch)
+      console.log("fetch object is", session, typeof session?.fetch);
 
       const bindings = await this.engine.queryBindings(
         `
@@ -203,7 +202,7 @@ export class SolidFS implements vscode.FileSystemProvider {
           sources: [source],
         }
       );
-  
+
       const res = await bindings
         .map<[string, vscode.FileType]>((binding) => {
           const str = binding.get("o")!.value;
@@ -213,22 +212,22 @@ export class SolidFS implements vscode.FileSystemProvider {
             str.length - Number(isDir)
           );
           this.stats[path] = isDir;
-  
+
           return [
             str.slice(this.root.length - 1, str.length - Number(isDir)),
             isDir ? vscode.FileType.Directory : vscode.FileType.File,
           ];
         })
         .toArray();
-  
-      console.log('returning ', res)
+
+      console.log("returning ", res);
       return res;
     } catch (e) {
       // TODO: Properly log this
-      console.error('error reading directory', e)
+      console.error("error reading directory", e);
     }
 
-    return []
+    return [];
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
@@ -261,7 +260,7 @@ export class SolidFS implements vscode.FileSystemProvider {
         }
 
         // TODO: Be more granular with permissions here (e.g. throw )
-        vscode.FileSystemError.Unavailable(await result.text())
+        vscode.FileSystemError.Unavailable(await result.text());
       }
     } catch (e) {
       // noop

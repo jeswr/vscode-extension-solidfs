@@ -35,19 +35,17 @@ export function activate(context: vscode.ExtensionContext) {
     ),
 
     vscode.commands.registerCommand("solidauth.login", async () => {
-      console.log('about to log in')
+      console.log("about to log in");
       const session = await getSolidFetch([], { createIfNone: true });
-      console.log("logged in")
+      console.log("logged in");
       vscode.window.showInformationMessage(`Welcome ${session?.account.label}`);
     }),
 
     vscode.commands.registerCommand("solidauth.logout", async () => {
-      
-      console.log('about to call remove all sessions')
+      console.log("about to call remove all sessions");
       await authProvider.removeAllSessions();
-      console.log('removing all sessions')
+      console.log("removing all sessions");
       // await authProvide
-
 
       // const sessions = await authProvider.getSessions();
 

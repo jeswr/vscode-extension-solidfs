@@ -21,13 +21,13 @@
 import type { fetch as crossFetch } from "cross-fetch";
 import { Headers as CrossFetchHeaders } from "cross-fetch";
 import type { EventEmitter } from "events";
-/* eslint-disable import/no-unresolved */
-const REFRESH_BEFORE_EXPIRATION_SECONDS = 20;
 import { EVENTS } from "@inrupt/solid-client-authn-core";
 import type { KeyPair } from "@inrupt/solid-client-authn-core/dist/authenticatedFetch/dpopUtils";
 import type { ITokenRefresher } from "@inrupt/solid-client-authn-core/dist/login/oidc/refresh/ITokenRefresher";
 import { SignJWT } from "jose";
 import { v4 } from "uuid";
+/* eslint-disable import/no-unresolved */
+const REFRESH_BEFORE_EXPIRATION_SECONDS = 20;
 /* eslint-enable import/no-unresolved */
 
 export type RefreshOptions = {
@@ -208,7 +208,7 @@ export async function buildAuthenticatedFetch(
     eventEmitter?: EventEmitter;
   }
 ): Promise<typeof crossFetch> {
-  let currentAccessToken = accessToken;
+  const currentAccessToken = accessToken;
   const currentRefreshOptions: RefreshOptions | undefined =
     options?.refreshOptions;
   // Setup the refresh timeout outside of the authenticated fetch, so that
@@ -218,8 +218,6 @@ export async function buildAuthenticatedFetch(
     // TODO: Handle this logic inside the solidAuthenticationProvider & make sure that the refresh token
     // is saved to secretStorage so that we can continue refreshing if a token is restored after a brief
     // period of downtime.
-
-
     // const proactivelyRefreshToken = async () => {
     //   try {
     //     const {
@@ -235,13 +233,11 @@ export async function buildAuthenticatedFetch(
     //       options!.eventEmitter
     //     );
     //     // Update the tokens in the closure if appropriate.
-
     //     /** * BEGIN CUSTOM CODE */
     //     if (currentAccessToken !== refreshedAccessToken) {
     //       options?.eventEmitter?.emit("access_token", refreshedAccessToken);
     //     }
     //     /** * END CUSTOM CODE */
-
     //     currentAccessToken = refreshedAccessToken;
     //     if (refreshToken !== undefined) {
     //       currentRefreshOptions.refreshToken = refreshToken;

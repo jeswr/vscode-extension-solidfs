@@ -186,24 +186,24 @@ export default class AuthCodeRedirectHandler
       dpopKey
     );
 
-    console.log('setting', tokenSet.access_token, 'for', sessionId)
+    console.log("setting", tokenSet.access_token, "for", sessionId);
     await this.storageUtility.setForUser(
       sessionId,
       { access_token: tokenSet.access_token },
       { secure: true }
     );
 
-    if (typeof tokenSet.expires_at === 'number') {
+    if (typeof tokenSet.expires_at === "number") {
       const eat = tokenSet.expires_at.toString();
 
-      console.log('setting expires at', eat);
+      console.log("setting expires at", eat);
 
       await this.storageUtility.setForUser(
         sessionId,
         { expires_at: tokenSet.expires_at.toString() },
         { secure: true }
       );
-    } else if (typeof tokenSet.expires_in === 'number') {
+    } else if (typeof tokenSet.expires_in === "number") {
       await this.storageUtility.setForUser(
         sessionId,
         { expires_at: (tokenSet.expires_in + Date.now()).toString() },
@@ -211,7 +211,7 @@ export default class AuthCodeRedirectHandler
       );
     }
 
-    if (typeof tokenSet.expires_in === 'number') {
+    if (typeof tokenSet.expires_in === "number") {
       await this.storageUtility.setForUser(
         sessionId,
         { expires_in: tokenSet.expires_in.toString() },
@@ -219,7 +219,7 @@ export default class AuthCodeRedirectHandler
       );
     }
 
-    if (typeof tokenSet.refresh_token === 'string') {
+    if (typeof tokenSet.refresh_token === "string") {
       await this.storageUtility.setForUser(
         sessionId,
         { refresh_token: tokenSet.refresh_token },

@@ -26,7 +26,6 @@ import {
   getSessionFromStorage,
 } from "@inrupt/solid-client-authn-node";
 
-import TokenRefresher from "@inrupt/solid-client-authn-node/dist/login/oidc/refresh/TokenRefresher";
 // import { StorageUtility } from "@inrupt/solid-client-authn-core";
 
 import { interactiveLogin } from "solid-node-interactive-auth";
@@ -40,29 +39,30 @@ import type {
   ExtensionContext,
 } from "vscode";
 import { EventEmitter } from "vscode";
-import {
-  StorageUtility,
-  IStorageUtility,
-} from "@inrupt/solid-client-authn-core";
+import type { IStorageUtility } from "@inrupt/solid-client-authn-core";
+import { StorageUtility } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
 
 // TODO: Use this to get name of idp provider
 // https://github.com/velocityzen/meta-extractor/blob/master/index.js
 
 // TODO: Allow users to store a list of idp providers.
-import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
-import { ISecretStorage } from '../storage/'
-import { refreshAccessToken } from './fetchFactory';
 import { importJWK } from "jose";
+import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
+import { ISecretStorage } from "../storage";
+import { refreshAccessToken } from "./fetchFactory";
 
 // TODO: Introduce
 
 // Get the time left on a NodeJS timeout
 function getTimeLeft(timeout: any): number {
+  // eslint-disable-next-line no-underscore-dangle
   return timeout._idleStart + timeout._idleTimeout - Date.now();
 }
 
-export class SolidAuthenticationProvider implements AuthenticationProvider, Disposable {
+export class SolidAuthenticationProvider
+  implements AuthenticationProvider, Disposable
+{
   public static readonly id = "solidauth";
 
   private sessionChangeEmitter =
@@ -87,18 +87,20 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     return this.sessionChangeEmitter.event;
   }
 
-  async _getSessions() {
+  async getSessionsPromise() {
     const sessionIds = await getSessionIdFromStorageAll(this.storage);
     const sessions = await Promise.all(
       // TODO: Monkey patch the session here so that we can update the access_token at
       // appropriate times
-      sessionIds.map(sessionId => toAuthenticationSessionOrClear(sessionId, this.storage))
+      sessionIds.map((sessionId) =>
+        toAuthenticationSessionOrClear(sessionId, this.storage)
+      )
     );
 
-    const sessionsMap: Record<string, AuthenticationSession> = {}
+    const sessionsMap: Record<string, AuthenticationSession> = {};
     for (const session of sessions) {
       if (session) {
-        sessionsMap[session.id] = session
+        sessionsMap[session.id] = session;
       }
     }
 
@@ -110,13 +112,13 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   ): Promise<readonly AuthenticationSession[]> {
     // If we do not have any sessions cached then recover them from the storage
     if (!this.sessions) {
-      this.sessions = this._getSessions();
-      this.sessions.then(async s => {
+      this.sessions = this.getSessionsPromise();
+      this.sessions.then(async (s) => {
         // After the sessions have first resolved; trigger a token refresh where necessary
         // TODO: See if this creates problems around a non-refreshed token first getting emitted
         await this.handleRefresh();
         return s;
-      })
+      });
     }
 
     let allSessions = await vscode.window.withProgress(
@@ -127,10 +129,12 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       },
       // TODO Make this cancellable
       async () => Object.values(await this.sessions!)
-    )
+    );
 
     if (scopes) {
-      allSessions = allSessions.filter(session => scopes.every(scope => session.scopes.includes(scope)))
+      allSessions = allSessions.filter((session) =>
+        scopes.every((scope) => session.scopes.includes(scope))
+      );
     }
 
     return allSessions;
@@ -140,8 +144,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   async createSession(
     scopes: readonly string[]
   ): Promise<AuthenticationSession> {
-
-    console.log('create session', scopes)
+    console.log("create session", scopes);
 
     // TODO: Fix this so that we can used the webId and issuer scopes
     if (scopes.length !== 0) {
@@ -150,29 +153,30 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
     let session: AuthenticationSession | undefined;
 
-    console.log('pre await sessions')
+    console.log("pre await sessions");
 
-    await (this.sessions = this.sessions?.then(async sessions => {
-      console.log('pre await login')
+    await (this.sessions = this.sessions?.then(async (sessions) => {
+      console.log("pre await login");
       session = await this.login();
-      console.log('pos await login')
+      console.log("pos await login");
       if (session) {
+        // eslint-disable-next-line no-param-reassign
         sessions[session.id] = session;
       }
       // Trigger refresh flow as appropriate and set timeout where appropriate
-      console.log('pre handle refresh')
+      console.log("pre handle refresh");
       try {
         // DO NOT AWAIT THIS - it should be a valid session
         // immediately upon log in and it causes blocking (that we should debug)
         this.handleRefresh();
       } catch (e) {
-        console.log('handle refresh errored with', e)
+        console.log("handle refresh errored with", e);
       }
-      console.log('post handle refresh')
+      console.log("post handle refresh");
       return sessions;
-    }))
+    }));
 
-    console.log('sessions resolved', session)
+    console.log("sessions resolved", session);
 
     if (session) {
       return session;
@@ -182,11 +186,11 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   }
 
   async removeAllSessions() {
-    console.log('about to call clear session from storage all')
+    console.log("about to call clear session from storage all");
     await clearSessionFromStorageAll(this.storage);
-    console.log('after calling clear session from storage all')
+    console.log("after calling clear session from storage all");
 
-    const sessions = await this.sessions
+    const sessions = await this.sessions;
     const sessionList = sessions ? Object.values(sessions) : [];
     this.sessions = undefined;
 
@@ -203,9 +207,10 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     this.storage.deleteAllUserData(sessionId);
 
     if (this.sessions) {
-      let removeSession = (await this.sessions)[sessionId];
+      const removeSession = (await this.sessions)[sessionId];
 
-      this.sessions = this.sessions.then(sessions => {
+      this.sessions = this.sessions.then((sessions) => {
+        // eslint-disable-next-line no-param-reassign
         delete sessions[sessionId];
         return sessions;
       });
@@ -216,16 +221,13 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         this.sessionChangeEmitter.fire({
           changed: [],
           added: [],
-          removed: [
-            removeSession
-          ],
+          removed: [removeSession],
         });
       }
     }
   }
 
   // async removeSession(sessionId: string): Promise<void> {
-
 
   //   // await (this.sessions as any)?.session.logout();
   //   // delete this.sessions;
@@ -236,7 +238,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
   public async runRefresh(sessionId: string) {
     // Now we run the refresh process for the given session
-    const session = (await this.sessions)?.[sessionId]
+    const session = (await this.sessions)?.[sessionId];
 
     if (session) {
       // eslint-disable-next-line camelcase, prefer-const
@@ -255,38 +257,54 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         sessionInfo: {
           sessionId,
           isLoggedIn: true,
-          webId: session.id
-        }
+          webId: session.id,
+        },
       });
 
       // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
-      const currentHandler = (s2 as any).clientAuthentication
-        .redirectHandler.handleables[0];
+      const currentHandler = (s2 as any).clientAuthentication.redirectHandler
+        .handleables[0];
 
       // TODO: See if we need to be handling redirects as part of the refresh flow (I don't *think* we do).
       // const redirectUrl = await this.storage.getForUser(sessionId, 'redirectUrl', { secure: true, errorIfNull: true })
 
       const result = await refreshAccessToken(
         {
-          refreshToken: (await this.storage.getForUser(sessionId, 'refresh_token', { secure: true, errorIfNull: true }))!,
+          refreshToken: (await this.storage.getForUser(
+            sessionId,
+            "refresh_token",
+            { secure: true, errorIfNull: true }
+          ))!,
           sessionId,
-          tokenRefresher: currentHandler.tokenRefresher
+          tokenRefresher: currentHandler.tokenRefresher,
         },
         dpopKey
       );
 
-      if (typeof result.expiresIn === 'number') {
-        await this.storage.setForUser(sessionId, { expires_in: result.expiresIn.toString() }, { secure: true })
-        await this.storage.setForUser(sessionId, { expires_at: (result.expiresIn + Date.now()).toString() }, { secure: true })
+      if (typeof result.expiresIn === "number") {
+        await this.storage.setForUser(
+          sessionId,
+          { expires_in: result.expiresIn.toString() },
+          { secure: true }
+        );
+        await this.storage.setForUser(
+          sessionId,
+          { expires_at: (result.expiresIn + Date.now()).toString() },
+          { secure: true }
+        );
       } else {
-        await this.storage.deleteForUser(sessionId, 'expires_in')
-        await this.storage.deleteForUser(sessionId, 'expires_at')
+        await this.storage.deleteForUser(sessionId, "expires_in");
+        await this.storage.deleteForUser(sessionId, "expires_at");
       }
 
       // await this.storage.setForUser(sessionId, { 'access_token': result.accessToken }, { secure: true })
 
-      if (typeof result.refreshToken === 'string') {
-        await this.storage.setForUser(sessionId, { 'refresh_token': result.refreshToken }, { secure: true })
+      if (typeof result.refreshToken === "string") {
+        await this.storage.setForUser(
+          sessionId,
+          { refresh_token: result.refreshToken },
+          { secure: true }
+        );
       }
 
       // const s3 = new Session({
@@ -300,21 +318,22 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
       // const newAuthenticationSession = await toAuthenticationSession(s3, this.storage);
 
-
       // TODO: Implement try/catch and delete session on reject
-      console.log('getting authentication session from storage');
-      const newAuthenticationSession = await toAuthenticationSessionFromStorage(sessionId, this.storage);
-      console.log('authentication session retrieved from storage');
+      console.log("getting authentication session from storage");
+      const newAuthenticationSession = await toAuthenticationSessionFromStorage(
+        sessionId,
+        this.storage
+      );
+      console.log("authentication session retrieved from storage");
 
-      this.sessions = this.sessions?.then(sessions => {
+      this.sessions = this.sessions?.then((sessions) => {
         if (sessions && sessionId in sessions) {
+          // eslint-disable-next-line no-param-reassign
           sessions[sessionId] = newAuthenticationSession;
         }
 
         this.sessionChangeEmitter.fire({
-          changed: [
-            newAuthenticationSession,
-          ],
+          changed: [newAuthenticationSession],
           added: [],
           removed: [],
         });
@@ -324,51 +343,64 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     }
   }
 
-  private _runningRefresh = false;
+  private runningRefresh = false;
 
   public async handleRefresh() {
-    console.log('handle refresh called')
-    if (this._runningRefresh)
-      return;
+    console.log("handle refresh called");
+    if (this.runningRefresh) return;
 
-    this._runningRefresh = true;
+    this.runningRefresh = true;
 
     // When we do this operation we update any sessions that
     // are set to expire in the next 2 minutes
-    const REFRESH_EXPIRY_BEFORE = Date.now() + (120 * 1000)
-    let toRefresh: string[]
+    const REFRESH_EXPIRY_BEFORE = Date.now() + 120 * 1000;
+    let toRefresh: string[];
     do {
-      console.log('about to get expiries')
+      console.log("about to get expiries");
+      // eslint-disable-next-line no-await-in-loop
       const expiries = await this.getAllExpiries();
-      console.log('expiries retrieved')
+      console.log("expiries retrieved");
 
-      toRefresh = []
-  
-      for (const sessionId in expiries) {
-        if (typeof sessionId === 'string' && expiries[sessionId] * 1000 < REFRESH_EXPIRY_BEFORE) {
-          console.log('refreshing sessionId', expiries[sessionId] * 1000, Date.now(), REFRESH_EXPIRY_BEFORE)
+      toRefresh = [];
+
+      for (const sessionId of Object.keys(expiries)) {
+        if (
+          typeof sessionId === "string" &&
+          expiries[sessionId] * 1000 < REFRESH_EXPIRY_BEFORE
+        ) {
+          console.log(
+            "refreshing sessionId",
+            expiries[sessionId] * 1000,
+            Date.now(),
+            REFRESH_EXPIRY_BEFORE
+          );
           toRefresh.push(sessionId);
         }
-        console.log('to early to refresh', expiries[sessionId] * 1000, Date.now(), REFRESH_EXPIRY_BEFORE)
+        console.log(
+          "to early to refresh",
+          expiries[sessionId] * 1000,
+          Date.now(),
+          REFRESH_EXPIRY_BEFORE
+        );
       }
 
-      console.log('toRefresh', toRefresh)
+      console.log("toRefresh", toRefresh);
 
+      // eslint-disable-next-line no-await-in-loop
       await Promise.all(
-        toRefresh.map(sessionId => this.runRefresh(sessionId))
-      )
-
+        toRefresh.map((sessionId) => this.runRefresh(sessionId))
+      );
     } while (toRefresh.length > 0);
 
-    this._runningRefresh = false;
+    this.runningRefresh = false;
 
     const nextExpiry = await this.getNextExpiry();
 
-    console.log('next expiry is', nextExpiry)
+    console.log("next expiry is", nextExpiry);
 
-    if (typeof nextExpiry === 'number') {
-      console.log('updating timeout for', nextExpiry * 1000 - Date.now())
-      this.updateTimeout(nextExpiry * 1000 - Date.now())
+    if (typeof nextExpiry === "number") {
+      console.log("updating timeout for", nextExpiry * 1000 - Date.now());
+      this.updateTimeout(nextExpiry * 1000 - Date.now());
     }
 
     // Refreshes all necessary tokens
@@ -376,22 +408,28 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
   public async getAllExpiries(): Promise<Record<string, number>> {
     const sessions = await this.sessions;
-    console.log('awaited sessions', sessions)
+    console.log("awaited sessions", sessions);
 
     const expiries: Record<string, number> = {};
-    for (const sessionId in sessions) {
-      if (typeof sessionId === 'string') {
-        const expiresAt = await this.storage.getForUser(sessionId, 'expires_at', { secure: true });
-        
+    for (const sessionId of sessions ? Object.keys(sessions) : []) {
+      if (typeof sessionId === "string") {
+        // TODO: See if there is a tangible difference to doing this in parallel
+        // eslint-disable-next-line no-await-in-loop
+        const expiresAt = await this.storage.getForUser(
+          sessionId,
+          "expires_at",
+          { secure: true }
+        );
+
         // console.log(
         //   'the user info is',
         //   JSON.parse((await this.storage.get(`solidClientAuthenticationUser:${sessionId}`))!)
         // )
 
-        console.log('expires at', expiresAt)
+        console.log("expires at", expiresAt);
 
-        if (typeof expiresAt === 'string') {
-          expiries[sessionId] = parseInt(expiresAt);
+        if (typeof expiresAt === "string") {
+          expiries[sessionId] = parseInt(expiresAt, 10);
         }
       }
     }
@@ -407,29 +445,29 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
   public updateTimeout(endsIn: number): void {
     // 20 seconds to be safe
-    const REFRESH_BEFORE_EXPIRATION = 20 * 1000
+    const REFRESH_BEFORE_EXPIRATION = 20 * 1000;
 
-    const newEndsIn = (endsIn - REFRESH_BEFORE_EXPIRATION);
+    const newEndsIn = endsIn - REFRESH_BEFORE_EXPIRATION;
 
-    console.log('updating timeout for', newEndsIn / 1000, 'seconds from now')
+    console.log("updating timeout for", newEndsIn / 1000, "seconds from now");
 
     if (
-      typeof this.refreshTokenTimeout !== 'undefined' &&
+      typeof this.refreshTokenTimeout !== "undefined" &&
       getTimeLeft(this.refreshTokenTimeout) < newEndsIn
     ) {
       // We do not need to update the timeout in this case
       return;
     }
 
-    console.log('setting timeout for', newEndsIn)
+    console.log("setting timeout for", newEndsIn);
 
     clearTimeout(this.refreshTokenTimeout);
     this.refreshTokenTimeout = setTimeout(async () => {
       await this.handleRefresh();
 
       const nextExpiry = await this.getNextExpiry();
-      if (typeof nextExpiry === 'number') {
-        this.updateTimeout(nextExpiry * 1000 - Date.now())
+      if (typeof nextExpiry === "number") {
+        this.updateTimeout(nextExpiry * 1000 - Date.now());
       }
     }, newEndsIn);
   }
@@ -536,8 +574,9 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         const clientName = `${vscode.env.appName} (${this.context.extension.packageJSON.name})`;
 
         try {
-          const redirectUrl = `${vscode.env.uriScheme}://${this.context.extension.id
-            }/${v4()}/redirect`;
+          const redirectUrl = `${vscode.env.uriScheme}://${
+            this.context.extension.id
+          }/${v4()}/redirect`;
 
           await session.login({
             redirectUrl,
@@ -615,7 +654,11 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
           label = p[p.length - 1];
         }
 
-        await this.storage.setForUser(session.info.sessionId, { label }, { secure: true });
+        await this.storage.setForUser(
+          session.info.sessionId,
+          { label },
+          { secure: true }
+        );
 
         // TODO: At this point we should be hooking into whichever handler has the updated access_
         // session.onNewRefreshToken(() => {
@@ -627,16 +670,16 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         // session.on("access_token", async (access_token: string) => {
         //   await this.storage.setForUser(session.info.sessionId, { access_token }, { secure: true })
 
-          // this.sessionChangeEmitter.fire({
-          //   changed: [
-          //     await toAuthenticationSession(session, this.storage),
-          //   ],
-          //   added: [],
-          //   removed: [],
-          // });
+        // this.sessionChangeEmitter.fire({
+        //   changed: [
+        //     await toAuthenticationSession(session, this.storage),
+        //   ],
+        //   added: [],
+        //   removed: [],
+        // });
         // });
 
-        return await toAuthenticationSession(session, this.storage);
+        return toAuthenticationSession(session, this.storage);
       }
     );
   }
@@ -644,12 +687,12 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
 async function toAuthenticationSessionOrClear(
   sessionId: string,
-  storage: IStorageUtility,
+  storage: IStorageUtility
 ): Promise<void | vscode.AuthenticationSession> {
   try {
     // Do not remove this await otherwise the error will reject outside
     // of the try/catch statement
-    return await toAuthenticationSessionFromStorage(sessionId, storage)
+    return await toAuthenticationSessionFromStorage(sessionId, storage);
   } catch {
     return await storage.deleteAllUserData(sessionId);
   }
@@ -657,7 +700,7 @@ async function toAuthenticationSessionOrClear(
 
 async function toAuthenticationSessionFromStorage(
   sessionId: string,
-  storage: IStorageUtility,
+  storage: IStorageUtility
 ) {
   const session = await getSessionFromStorage(sessionId, storage);
 
@@ -668,36 +711,55 @@ async function toAuthenticationSessionFromStorage(
   return toAuthenticationSession(session, storage);
 }
 
-async function getAccessToken(sessionId: string, storage: IStorageUtility): Promise<string> {
+async function getAccessToken(
+  sessionId: string,
+  storage: IStorageUtility
+): Promise<string> {
   return JSON.stringify({
-    access_token: await storage.getForUser(sessionId, 'access_token', { secure: true, errorIfNull: true }),
-    privateKey: await storage.getForUser(sessionId, 'privateKey', { secure: true, errorIfNull: true }),
-    publicKey: await storage.getForUser(sessionId, 'publicKey', { secure: true, errorIfNull: true }),
-  })
+    access_token: await storage.getForUser(sessionId, "access_token", {
+      secure: true,
+      errorIfNull: true,
+    }),
+    privateKey: await storage.getForUser(sessionId, "privateKey", {
+      secure: true,
+      errorIfNull: true,
+    }),
+    publicKey: await storage.getForUser(sessionId, "publicKey", {
+      secure: true,
+      errorIfNull: true,
+    }),
+  });
 }
 
 async function toAuthenticationSession(
   session: Session,
-  storage: IStorageUtility,
+  storage: IStorageUtility
 ): Promise<AuthenticationSession> {
   const { isLoggedIn, webId, sessionId } = session.info;
 
   if (!isLoggedIn)
-    throw new Error("Cannot create authentication session for session that is not logged in");
+    throw new Error(
+      "Cannot create authentication session for session that is not logged in"
+    );
 
-  if (!webId)
-    throw new Error("webId is not defined for session");
+  if (!webId) throw new Error("webId is not defined for session");
 
   return {
     id: session.info.sessionId,
     accessToken: await getAccessToken(sessionId, storage),
     account: {
-      label: (await storage.getForUser(sessionId, 'label', { secure: true, errorIfNull: true }))!,
+      label: (await storage.getForUser(sessionId, "label", {
+        secure: true,
+        errorIfNull: true,
+      }))!,
       id: webId,
     },
     scopes: [
       `webId:${webId}`,
-      `issuer:${await storage.getForUser(sessionId, 'issuer', { secure: true, errorIfNull: true })}`
+      `issuer:${await storage.getForUser(sessionId, "issuer", {
+        secure: true,
+        errorIfNull: true,
+      })}`,
     ],
-  }
+  };
 }

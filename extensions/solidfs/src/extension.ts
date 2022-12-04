@@ -64,7 +64,7 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
 
   if (roots) {
     for (const webId of Object.keys(roots)) {
-      console.log(webId, roots[webId])
+      console.log(webId, roots[webId]);
       for (const root of roots[webId]) {
         // TODO: Fix this - we should be using the webId in the scope to indicate what we want
         const session = getSolidFetch([], { createIfNone: false });
@@ -76,7 +76,7 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
             new SolidFS({ session, root, engine }),
             { isCaseSensitive: true }
           )
-        );        
+        );
         // TODO: Implement this in a way that it is not activated prior to clear
         // maybe it is just a matter of when it is called?
         // if (
@@ -111,9 +111,11 @@ function hashCode(str: string) {
   let i;
   let chr;
   if (str.length === 0) return hash;
-  for (i = 0; i < str.length; i++) {
+  for (i = 0; i < str.length; i += 1) {
     chr = str.charCodeAt(i);
+    // eslint-disable-next-line no-bitwise
     hash = (hash << 5) - hash + chr;
+    // eslint-disable-next-line no-bitwise
     hash |= 0; // Convert to 32bit integer
   }
   return hash;
@@ -141,11 +143,11 @@ export async function activate(context: vscode.ExtensionContext) {
       // TODO: Potentially use scopes to indicate the webId that we want to log in with
       const session = await getSolidFetch([], { createIfNone: true });
       const webId = session?.account.id;
-      const fetch = session?.fetch;
+      const fetchFn = session?.fetch;
 
-      console.log('solidfs opened with', !!fetch, webId)
+      console.log("solidfs opened with", !!fetchFn, webId);
 
-      if (!webId || !fetch) return;
+      if (!webId || !fetchFn) return;
 
       await vscode.window.withProgress(
         {
@@ -156,7 +158,7 @@ export async function activate(context: vscode.ExtensionContext) {
         async (progress, token) => {
           progress.report({ message: "loading Pod root" });
 
-          const root = await getPodRoot(webId, fetch);
+          const root = await getPodRoot(webId, fetchFn);
           let roots = root ? [root] : [];
 
           if (roots.length === 0) {
@@ -176,13 +178,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
           await context.workspaceState.update(`solidfs`, { [webId]: roots });
 
-          for (const root of roots) {
-
+          for (const podRoot of roots) {
             try {
               context.subscriptions.push(
                 vscode.workspace.registerFileSystemProvider(
-                  `solidfs-${hashCode(webId)}-${hashCode(root)}`,
-                  new SolidFS({ session, root, engine }),
+                  `solidfs-${hashCode(webId)}-${hashCode(podRoot)}`,
+                  new SolidFS({ session, root: podRoot, engine }),
                   { isCaseSensitive: true }
                 )
               );
@@ -190,7 +191,7 @@ export async function activate(context: vscode.ExtensionContext) {
               // Suppress errors from registering an existing fs provider
             }
 
-            console.log('about to update workspace folder');
+            console.log("about to update workspace folder");
 
             vscode.workspace.updateWorkspaceFolders(
               vscode.workspace.workspaceFolders
@@ -199,15 +200,14 @@ export async function activate(context: vscode.ExtensionContext) {
               null,
               {
                 uri: vscode.Uri.parse(
-                  `solidfs-${hashCode(webId)}-${hashCode(root)}:/`
+                  `solidfs-${hashCode(webId)}-${hashCode(podRoot)}:/`
                 ),
                 // name: new URL(webId).pathname.split("/").find((x) => x !== ""),
-                name: session.account.label
+                name: session.account.label,
               }
             );
 
-            console.log('after update workspace folder');
-
+            console.log("after update workspace folder");
           }
         }
       );
@@ -221,14 +221,14 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     disposable,
 
-    vscode.commands.registerCommand('solidfs.clear', async () => {
-      console.log('clearing workspace')
+    vscode.commands.registerCommand("solidfs.clear", async () => {
+      console.log("clearing workspace");
       await context.workspaceState.update("solidfs", undefined);
 
       console.log(
-        'update workspace state',
+        "update workspace state",
         await context.workspaceState.get("solidfs", undefined)
-      )
+      );
     })
   );
 }
