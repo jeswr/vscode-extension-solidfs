@@ -289,7 +289,22 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
         await this.storage.setForUser(sessionId, { 'refresh_token': result.refreshToken }, { secure: true })
       }
 
-      const newAuthenticationSession = await toAuthenticationSession(s2, this.storage);
+      // const s3 = new Session({
+      //   storage: this.storage,
+      //   sessionInfo: {
+      //     sessionId,
+      //     isLoggedIn: true,
+      //     webId: session.id
+      //   }
+      // });
+
+      // const newAuthenticationSession = await toAuthenticationSession(s3, this.storage);
+
+
+      // TODO: Implement try/catch and delete session on reject
+      console.log('getting authentication session from storage');
+      const newAuthenticationSession = await toAuthenticationSessionFromStorage(sessionId, this.storage);
+      console.log('authentication session retrieved from storage');
 
       this.sessions = this.sessions?.then(sessions => {
         if (sessions && sessionId in sessions) {
@@ -312,6 +327,7 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
   private _runningRefresh = false;
 
   public async handleRefresh() {
+    console.log('handle refresh called')
     if (this._runningRefresh)
       return;
 
@@ -322,15 +338,21 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     const REFRESH_EXPIRY_BEFORE = Date.now() + (120 * 1000)
     let toRefresh: string[]
     do {
+      console.log('about to get expiries')
       const expiries = await this.getAllExpiries();
+      console.log('expiries retrieved')
 
       toRefresh = []
   
       for (const sessionId in expiries) {
-        if (typeof sessionId === 'string' && expiries[sessionId] < REFRESH_EXPIRY_BEFORE) {
+        if (typeof sessionId === 'string' && expiries[sessionId] * 1000 < REFRESH_EXPIRY_BEFORE) {
+          console.log('refreshing sessionId', expiries[sessionId] * 1000, Date.now(), REFRESH_EXPIRY_BEFORE)
           toRefresh.push(sessionId);
         }
+        console.log('to early to refresh', expiries[sessionId] * 1000, Date.now(), REFRESH_EXPIRY_BEFORE)
       }
+
+      console.log('toRefresh', toRefresh)
 
       await Promise.all(
         toRefresh.map(sessionId => this.runRefresh(sessionId))
@@ -341,8 +363,12 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
     this._runningRefresh = false;
 
     const nextExpiry = await this.getNextExpiry();
+
+    console.log('next expiry is', nextExpiry)
+
     if (typeof nextExpiry === 'number') {
-      this.updateTimeout(nextExpiry - Date.now())
+      console.log('updating timeout for', nextExpiry * 1000 - Date.now())
+      this.updateTimeout(nextExpiry * 1000 - Date.now())
     }
 
     // Refreshes all necessary tokens
@@ -350,11 +376,19 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
   public async getAllExpiries(): Promise<Record<string, number>> {
     const sessions = await this.sessions;
+    console.log('awaited sessions', sessions)
 
     const expiries: Record<string, number> = {};
     for (const sessionId in sessions) {
       if (typeof sessionId === 'string') {
         const expiresAt = await this.storage.getForUser(sessionId, 'expires_at', { secure: true });
+        
+        // console.log(
+        //   'the user info is',
+        //   JSON.parse((await this.storage.get(`solidClientAuthenticationUser:${sessionId}`))!)
+        // )
+
+        console.log('expires at', expiresAt)
 
         if (typeof expiresAt === 'string') {
           expiries[sessionId] = parseInt(expiresAt);
@@ -377,6 +411,8 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
 
     const newEndsIn = (endsIn - REFRESH_BEFORE_EXPIRATION);
 
+    console.log('updating timeout for', newEndsIn / 1000, 'seconds from now')
+
     if (
       typeof this.refreshTokenTimeout !== 'undefined' &&
       getTimeLeft(this.refreshTokenTimeout) < newEndsIn
@@ -385,15 +421,17 @@ export class SolidAuthenticationProvider implements AuthenticationProvider, Disp
       return;
     }
 
+    console.log('setting timeout for', newEndsIn)
+
     clearTimeout(this.refreshTokenTimeout);
     this.refreshTokenTimeout = setTimeout(async () => {
       await this.handleRefresh();
 
       const nextExpiry = await this.getNextExpiry();
       if (typeof nextExpiry === 'number') {
-        this.updateTimeout(nextExpiry - Date.now())
+        this.updateTimeout(nextExpiry * 1000 - Date.now())
       }
-    });
+    }, newEndsIn);
   }
 
   /**

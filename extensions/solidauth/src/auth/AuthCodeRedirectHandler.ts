@@ -194,9 +194,13 @@ export default class AuthCodeRedirectHandler
     );
 
     if (typeof tokenSet.expires_at === 'number') {
+      const eat = tokenSet.expires_at.toString();
+
+      console.log('setting expires at', eat);
+
       await this.storageUtility.setForUser(
         sessionId,
-        { expires_in: tokenSet.expires_at.toString() },
+        { expires_at: tokenSet.expires_at.toString() },
         { secure: true }
       );
     } else if (typeof tokenSet.expires_in === 'number') {
@@ -222,6 +226,8 @@ export default class AuthCodeRedirectHandler
         { secure: true }
       );
     }
+
+    // console.log('the token set is', tokenSet)
 
     const sessionInfo = await this.sessionInfoManager.get(sessionId);
     if (!sessionInfo) {
