@@ -40,7 +40,12 @@ jobs:
       matrix:
         # Since this is a monorepo, the Sonar scan must be run on each of the packages but this will pull in the test
         # coverage information produced by the tests already run.
-        project-root: ["packages/solid-vscode-auth", "extensions/solidauth", "extensions/solidfs"]
+        project-root:
+          [
+            "packages/solid-vscode-auth",
+            "extensions/solidauth",
+            "extensions/solidfs",
+          ]
     steps:
       - uses: actions/checkout@v3
         with:
