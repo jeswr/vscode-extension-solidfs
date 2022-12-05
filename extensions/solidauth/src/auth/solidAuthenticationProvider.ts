@@ -25,8 +25,7 @@ import {
   getSessionIdFromStorageAll,
   getSessionFromStorage,
 } from "@inrupt/solid-client-authn-node";
-
-// import { StorageUtility } from "@inrupt/solid-client-authn-core";
+import { SOLID_AUTHENTICATION_PROVIDER_ID } from "@inrupt/solid-vscode-auth";
 
 import { interactiveLogin } from "solid-node-interactive-auth";
 import { v4 } from "uuid";
@@ -63,7 +62,7 @@ function getTimeLeft(timeout: any): number {
 export class SolidAuthenticationProvider
   implements AuthenticationProvider, Disposable
 {
-  public static readonly id = "solidauth";
+  public static readonly id = SOLID_AUTHENTICATION_PROVIDER_ID;
 
   private sessionChangeEmitter =
     new EventEmitter<AuthenticationProviderAuthenticationSessionsChangeEvent>();

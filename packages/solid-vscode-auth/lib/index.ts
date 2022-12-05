@@ -23,7 +23,7 @@ import { fetch as crossFetch } from "cross-fetch";
 import { importJWK } from "jose";
 import * as vscode from "vscode";
 
-const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
+export const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
 
 async function buildAuthenticatedFetchFromAccessToken(
   accessToken: string
