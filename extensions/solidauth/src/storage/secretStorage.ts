@@ -28,10 +28,16 @@ export class ISecretStorage implements IStorage {
   ) {}
 
   async get(key: string): Promise<string | undefined> {
-    return this.secrets.get(this.prefix + key);
+    const result = await this.secrets.get(this.prefix + key);
+    // console.log('getting', key, result)
+    return result;
   }
 
   async set(key: string, value: string): Promise<void> {
+    // console.log('setting', key, value)
+    if (key.includes('solidClientAuthenticationUser:')) {
+      console.log('-'.repeat(50), 'refresh token being set is', JSON.parse(value)['refresh_token'])
+    }
     return this.secrets.store(this.prefix + key, value);
   }
 

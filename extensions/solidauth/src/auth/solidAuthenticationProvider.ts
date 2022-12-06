@@ -38,7 +38,8 @@ import type {
   ExtensionContext,
 } from "vscode";
 import { EventEmitter } from "vscode";
-import type { IStorageUtility } from "@inrupt/solid-client-authn-core";
+import { EventEmitter as EE } from "stream";
+import { EVENTS, IStorageUtility } from "@inrupt/solid-client-authn-core";
 import { StorageUtility } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
 
@@ -53,7 +54,7 @@ import { refreshAccessToken } from "./fetchFactory";
 
 // TODO: Introduce
 
-// Get the time left on a NodeJS timeout
+// Get the time left on a NodeJS timeout (in milliseconds)
 function getTimeLeft(timeout: any): number {
   // eslint-disable-next-line no-underscore-dangle
   return timeout._idleStart + timeout._idleTimeout - Date.now();
@@ -258,27 +259,88 @@ export class SolidAuthenticationProvider
           isLoggedIn: true,
           webId: session.id,
         },
+        
       });
 
       // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
       const currentHandler = (s2 as any).clientAuthentication.redirectHandler
         .handleables[0];
 
+      console.log('the redirecthandleables are ', (s2 as any).clientAuthentication.redirectHandler.handleables)
+
       // TODO: See if we need to be handling redirects as part of the refresh flow (I don't *think* we do).
       // const redirectUrl = await this.storage.getForUser(sessionId, 'redirectUrl', { secure: true, errorIfNull: true })
 
-      const result = await refreshAccessToken(
-        {
-          refreshToken: (await this.storage.getForUser(
-            sessionId,
-            "refresh_token",
-            { secure: true, errorIfNull: true }
-          ))!,
-          sessionId,
-          tokenRefresher: currentHandler.tokenRefresher,
-        },
+      const refreshToken = (await this.storage.getForUser(
+        sessionId,
+        "refresh_token",
+        { secure: true, errorIfNull: true }
+      ));
+
+      console.log('about to update with refreshToken', refreshToken)
+
+      if (!refreshToken) {
+        throw new Error('refresh token is undefined');
+      }
+
+      console.log(
+        await this.storage.getForUser(sessionId, "expires_at"),
+        await this.storage.getForUser(sessionId, "expires_in"),
+        await this.storage.getForUser(sessionId, "refresh_token"),
+        await this.storage.getForUser(sessionId, "access_token")
+      )
+
+      console.log('pre refresh token -')
+
+      const result = await currentHandler.tokenRefresher.refresh(
+        sessionId,
+        refreshToken,
         dpopKey
       );
+
+      console.log('post refresh token', result)
+
+      // const emitter = new EE();
+
+      // emitter.on(EVENTS.NEW_REFRESH_TOKEN, (t) => {
+      //   console.log('new refresh token event called', t)
+      // })
+
+      // emitter.on(EVENTS.SESSION_EXTENDED, async (t) => {
+      //   console.log('session extension', t)
+      //   await this.storage.setForUser(
+      //     sessionId,
+      //     { expires_in: t.toString() },
+      //     { secure: true }
+      //   );
+      //   await this.storage.setForUser(
+      //     sessionId,
+      //     { expires_at: Math.floor(t + (Date.now() / 1000)).toString() },
+      //     { secure: true }
+      //   );
+      // })
+
+
+
+      // TODO: Use refreshAccess from RefreshTokenOidcHandler here!
+
+      // const result = await refreshAccessToken(
+      //   {
+      //     refreshToken: refreshToken,
+      //     sessionId,
+      //     tokenRefresher: currentHandler.tokenRefresher,
+      //   },
+      //   dpopKey,
+      //   // s2
+      //   emitter
+      // );
+
+      console.log(
+        await this.storage.getForUser(sessionId, "expires_at"),
+        await this.storage.getForUser(sessionId, "expires_in") 
+      )
+
+      console.log('refresh result', result)
 
       if (typeof result.expiresIn === "number") {
         await this.storage.setForUser(
@@ -288,20 +350,29 @@ export class SolidAuthenticationProvider
         );
         await this.storage.setForUser(
           sessionId,
-          { expires_at: (result.expiresIn + Date.now()).toString() },
+          { expires_at: Math.floor(result.expiresIn + (Date.now() / 1000)).toString() },
           { secure: true }
         );
       } else {
-        await this.storage.deleteForUser(sessionId, "expires_in");
-        await this.storage.deleteForUser(sessionId, "expires_at");
+        // await this.storage.deleteForUser(sessionId, "expires_in");
+        // await this.storage.deleteForUser(sessionId, "expires_at");
       }
 
       // await this.storage.setForUser(sessionId, { 'access_token': result.accessToken }, { secure: true })
 
       if (typeof result.refreshToken === "string") {
+        console.log('-'.repeat(50), 'setting refresh token', result.refreshToken, '-'.repeat(50))
         await this.storage.setForUser(
           sessionId,
           { refresh_token: result.refreshToken },
+          { secure: true }
+        );
+      }
+
+      if (typeof result.accessToken === "string") {
+        await this.storage.setForUser(
+          sessionId,
+          { access_token: result.accessToken },
           { secure: true }
         );
       }
@@ -352,7 +423,7 @@ export class SolidAuthenticationProvider
 
     // When we do this operation we update any sessions that
     // are set to expire in the next 2 minutes
-    const REFRESH_EXPIRY_BEFORE = Date.now() + 120 * 1000;
+    const REFRESH_EXPIRY_BEFORE = Date.now() + 1200 * 1000;
     let toRefresh: string[];
     do {
       console.log("about to get expiries");
@@ -374,13 +445,14 @@ export class SolidAuthenticationProvider
             REFRESH_EXPIRY_BEFORE
           );
           toRefresh.push(sessionId);
+        } else {
+          console.log(
+            "to early to refresh",
+            expiries[sessionId] * 1000,
+            Date.now(),
+            REFRESH_EXPIRY_BEFORE
+          );
         }
-        console.log(
-          "to early to refresh",
-          expiries[sessionId] * 1000,
-          Date.now(),
-          REFRESH_EXPIRY_BEFORE
-        );
       }
 
       console.log("toRefresh", toRefresh);
@@ -389,6 +461,9 @@ export class SolidAuthenticationProvider
       await Promise.all(
         toRefresh.map((sessionId) => this.runRefresh(sessionId))
       );
+      
+      // Make sure the sessions are resolved
+      await this.sessions;
     } while (toRefresh.length > 0);
 
     this.runningRefresh = false;
@@ -398,13 +473,14 @@ export class SolidAuthenticationProvider
     console.log("next expiry is", nextExpiry);
 
     if (typeof nextExpiry === "number") {
-      console.log("updating timeout for", nextExpiry * 1000 - Date.now());
-      this.updateTimeout(nextExpiry * 1000 - Date.now());
+      console.log("updating timeout for", (nextExpiry * 1000) - Date.now());
+      this.updateTimeout(nextExpiry - Date.now());
     }
 
     // Refreshes all necessary tokens
   }
 
+  // Get all expiries (in seconds since 1970-01-01T00:00:00Z)
   public async getAllExpiries(): Promise<Record<string, number>> {
     const sessions = await this.sessions;
     console.log("awaited sessions", sessions);
@@ -436,6 +512,7 @@ export class SolidAuthenticationProvider
     return expiries;
   }
 
+  // Get next expiry (in seconds since 1970-01-01T00:00:00Z)
   public async getNextExpiry(): Promise<number | undefined> {
     const expiries = Object.values(await this.getAllExpiries());
 
@@ -443,8 +520,8 @@ export class SolidAuthenticationProvider
   }
 
   public updateTimeout(endsIn: number): void {
-    // 20 seconds to be safe
-    const REFRESH_BEFORE_EXPIRATION = 20 * 1000;
+    // 30 seconds to be safe
+    const REFRESH_BEFORE_EXPIRATION = 3000 * 1000;
 
     const newEndsIn = endsIn - REFRESH_BEFORE_EXPIRATION;
 
@@ -466,7 +543,7 @@ export class SolidAuthenticationProvider
 
       const nextExpiry = await this.getNextExpiry();
       if (typeof nextExpiry === "number") {
-        this.updateTimeout(nextExpiry * 1000 - Date.now());
+        this.updateTimeout((nextExpiry * 1000) - Date.now());
       }
     }, newEndsIn);
   }

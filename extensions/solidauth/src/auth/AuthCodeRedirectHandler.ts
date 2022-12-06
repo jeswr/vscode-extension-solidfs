@@ -35,10 +35,12 @@ import {
   loadOidcContextFromStorage,
   generateDpopKeyPair,
   EVENTS,
-  buildAuthenticatedFetch,
   getWebidFromTokenPayload,
   saveSessionInfoToStorage,
 } from "@inrupt/solid-client-authn-core";
+import {
+  buildAuthenticatedFetch,
+} from "./fetchFactory";
 import { configToIssuerMetadata } from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
 import type { KeyObject } from "crypto";
 import { fetch as globalFetch } from "cross-fetch";
@@ -206,7 +208,7 @@ export default class AuthCodeRedirectHandler
     } else if (typeof tokenSet.expires_in === "number") {
       await this.storageUtility.setForUser(
         sessionId,
-        { expires_at: (tokenSet.expires_in + Date.now()).toString() },
+        { expires_at: Math.floor(tokenSet.expires_in + (Date.now() / 1000)).toString() },
         { secure: true }
       );
     }
