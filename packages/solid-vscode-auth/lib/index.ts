@@ -70,6 +70,8 @@ export async function getSolidFetch(
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
   vscode.authentication.onDidChangeSessions((sessions) => {
+    console.log('on did change sessions called', sessions)
+    
     if (sessions.provider.id === SOLID_AUTHENTICATION_PROVIDER_ID) {
       const newSession = vscode.authentication.getSession(
         SOLID_AUTHENTICATION_PROVIDER_ID,
@@ -80,6 +82,7 @@ export async function getSolidFetch(
       Promise.all([session, newSession]).then(async ([old, news]) => {
         if (old?.id === news?.id) {
           definedSession = (await newSession) || definedSession;
+          console.log('session updated', definedSession)
         }
       });
     }

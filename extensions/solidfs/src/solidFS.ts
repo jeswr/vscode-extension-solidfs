@@ -31,6 +31,7 @@ import {
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
+// TODO: Make sure this is properly used 
 const Container = DF.namedNode("http://www.w3.org/ns/ldp#Container");
 
 // TODO: Work out why we are *first* getting non-existant file errors
@@ -278,7 +279,7 @@ export class SolidFS implements vscode.FileSystemProvider {
     const i = uri.path.lastIndexOf("/") + 1;
 
     // TODO: Predict this based on file type
-    const data = await ((await this.session)?.fetch ?? fetch)(
+    const data = await ((await this.session)?.fetch ?? (globalThis as any).fetch)(
       `${this.root}${uri.path.slice(1, i)}`,
       { method: "HEAD" }
     );

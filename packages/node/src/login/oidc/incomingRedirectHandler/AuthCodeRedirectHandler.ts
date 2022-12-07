@@ -153,13 +153,50 @@ export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
     }
     let refreshOptions: RefreshOptions | undefined;
     if (tokenSet.refresh_token !== undefined) {
-      eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refresh_token);
+      eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refresh_token); 
+      /* === BEGIN CUSTOM ADDITION === */
+      await this.storageUtility.setForUser(
+        sessionId,
+        { refreshToken: tokenSet.refresh_token },
+        { secure: true }
+      );
+      /* === END CUSTOM ADDITION === */
       refreshOptions = {
         refreshToken: tokenSet.refresh_token,
         sessionId,
         tokenRefresher: this.tokenRefresher,
       };
     }
+    /* === BEGIN CUSTOM ADDITION === */
+    await this.storageUtility.setForUser(
+      sessionId,
+      { access_token: tokenSet.access_token },
+      { secure: true }
+    );
+
+    if (typeof tokenSet.expires_at === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_at: tokenSet.expires_at.toString() },
+        { secure: true }
+      );
+    } else if (typeof tokenSet.expires_in === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_at: Math.floor(tokenSet.expires_in + (Date.now() / 1000)).toString() },
+        { secure: true }
+      );
+    }
+
+    if (typeof tokenSet.expires_in === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_in: tokenSet.expires_in.toString() },
+        { secure: true }
+      );
+    }
+    /* === END CUSTOM ADDITION === */
+
     const authFetch = await buildAuthenticatedFetch(
       globalFetch,
       tokenSet.access_token,

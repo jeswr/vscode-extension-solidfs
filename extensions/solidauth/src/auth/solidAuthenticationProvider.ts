@@ -38,8 +38,7 @@ import type {
   ExtensionContext,
 } from "vscode";
 import { EventEmitter } from "vscode";
-import { EventEmitter as EE } from "stream";
-import { EVENTS, IStorageUtility } from "@inrupt/solid-client-authn-core";
+import { IStorageUtility } from "@inrupt/solid-client-authn-core";
 import { StorageUtility } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
 
@@ -48,11 +47,9 @@ import { StorageUtility } from "@inrupt/solid-client-authn-core";
 
 // TODO: Allow users to store a list of idp providers.
 import { importJWK } from "jose";
-import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
+// import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
 import { ISecretStorage } from "../storage";
-import { refreshAccessToken } from "./fetchFactory";
-
-// TODO: Introduce
+const DEFAULT_EXPIRATION_TIME_SECONDS = 600;
 
 // Get the time left on a NodeJS timeout (in milliseconds)
 function getTimeLeft(timeout: any): number {
@@ -156,27 +153,20 @@ export class SolidAuthenticationProvider
     console.log("pre await sessions");
 
     await (this.sessions = this.sessions?.then(async (sessions) => {
-      console.log("pre await login");
       session = await this.login();
-      console.log("pos await login");
       if (session) {
         // eslint-disable-next-line no-param-reassign
         sessions[session.id] = session;
       }
       // Trigger refresh flow as appropriate and set timeout where appropriate
-      console.log("pre handle refresh");
       try {
         // DO NOT AWAIT THIS - it should be a valid session
         // immediately upon log in and it causes blocking (that we should debug)
         this.handleRefresh();
       } catch (e) {
-        console.log("handle refresh errored with", e);
       }
-      console.log("post handle refresh");
       return sessions;
     }));
-
-    console.log("sessions resolved", session);
 
     if (session) {
       return session;
@@ -186,9 +176,7 @@ export class SolidAuthenticationProvider
   }
 
   async removeAllSessions() {
-    console.log("about to call clear session from storage all");
     await clearSessionFromStorageAll(this.storage);
-    console.log("after calling clear session from storage all");
 
     const sessions = await this.sessions;
     const sessionList = sessions ? Object.values(sessions) : [];
@@ -266,31 +254,15 @@ export class SolidAuthenticationProvider
       const currentHandler = (s2 as any).clientAuthentication.redirectHandler
         .handleables[0];
 
-      console.log('the redirecthandleables are ', (s2 as any).clientAuthentication.redirectHandler.handleables)
-
-      // TODO: See if we need to be handling redirects as part of the refresh flow (I don't *think* we do).
-      // const redirectUrl = await this.storage.getForUser(sessionId, 'redirectUrl', { secure: true, errorIfNull: true })
-
       const refreshToken = (await this.storage.getForUser(
         sessionId,
-        "refresh_token",
+        "refreshToken",
         { secure: true, errorIfNull: true }
       ));
-
-      console.log('about to update with refreshToken', refreshToken)
 
       if (!refreshToken) {
         throw new Error('refresh token is undefined');
       }
-
-      console.log(
-        await this.storage.getForUser(sessionId, "expires_at"),
-        await this.storage.getForUser(sessionId, "expires_in"),
-        await this.storage.getForUser(sessionId, "refresh_token"),
-        await this.storage.getForUser(sessionId, "access_token")
-      )
-
-      console.log('pre refresh token -')
 
       const result = await currentHandler.tokenRefresher.refresh(
         sessionId,
@@ -298,73 +270,18 @@ export class SolidAuthenticationProvider
         dpopKey
       );
 
-      console.log('post refresh token', result)
+      const expiresAt = (result.expiresIn ?? DEFAULT_EXPIRATION_TIME_SECONDS) + Math.floor(Date.now() / 1000)
 
-      // const emitter = new EE();
-
-      // emitter.on(EVENTS.NEW_REFRESH_TOKEN, (t) => {
-      //   console.log('new refresh token event called', t)
-      // })
-
-      // emitter.on(EVENTS.SESSION_EXTENDED, async (t) => {
-      //   console.log('session extension', t)
-      //   await this.storage.setForUser(
-      //     sessionId,
-      //     { expires_in: t.toString() },
-      //     { secure: true }
-      //   );
-      //   await this.storage.setForUser(
-      //     sessionId,
-      //     { expires_at: Math.floor(t + (Date.now() / 1000)).toString() },
-      //     { secure: true }
-      //   );
-      // })
-
-
-
-      // TODO: Use refreshAccess from RefreshTokenOidcHandler here!
-
-      // const result = await refreshAccessToken(
-      //   {
-      //     refreshToken: refreshToken,
-      //     sessionId,
-      //     tokenRefresher: currentHandler.tokenRefresher,
-      //   },
-      //   dpopKey,
-      //   // s2
-      //   emitter
-      // );
-
-      console.log(
-        await this.storage.getForUser(sessionId, "expires_at"),
-        await this.storage.getForUser(sessionId, "expires_in") 
-      )
-
-      console.log('refresh result', result)
-
-      if (typeof result.expiresIn === "number") {
-        await this.storage.setForUser(
-          sessionId,
-          { expires_in: result.expiresIn.toString() },
-          { secure: true }
-        );
-        await this.storage.setForUser(
-          sessionId,
-          { expires_at: Math.floor(result.expiresIn + (Date.now() / 1000)).toString() },
-          { secure: true }
-        );
-      } else {
-        // await this.storage.deleteForUser(sessionId, "expires_in");
-        // await this.storage.deleteForUser(sessionId, "expires_at");
-      }
-
-      // await this.storage.setForUser(sessionId, { 'access_token': result.accessToken }, { secure: true })
+      await this.storage.setForUser(
+        sessionId,
+        { expires_at: expiresAt.toString() },
+        { secure: true }
+      );
 
       if (typeof result.refreshToken === "string") {
-        console.log('-'.repeat(50), 'setting refresh token', result.refreshToken, '-'.repeat(50))
         await this.storage.setForUser(
           sessionId,
-          { refresh_token: result.refreshToken },
+          { refreshToken: result.refreshToken },
           { secure: true }
         );
       }
@@ -377,24 +294,10 @@ export class SolidAuthenticationProvider
         );
       }
 
-      // const s3 = new Session({
-      //   storage: this.storage,
-      //   sessionInfo: {
-      //     sessionId,
-      //     isLoggedIn: true,
-      //     webId: session.id
-      //   }
-      // });
-
-      // const newAuthenticationSession = await toAuthenticationSession(s3, this.storage);
-
-      // TODO: Implement try/catch and delete session on reject
-      console.log("getting authentication session from storage");
       const newAuthenticationSession = await toAuthenticationSessionFromStorage(
         sessionId,
         this.storage
       );
-      console.log("authentication session retrieved from storage");
 
       this.sessions = this.sessions?.then((sessions) => {
         if (sessions && sessionId in sessions) {
@@ -416,20 +319,17 @@ export class SolidAuthenticationProvider
   private runningRefresh = false;
 
   public async handleRefresh() {
-    console.log("handle refresh called");
     if (this.runningRefresh) return;
 
     this.runningRefresh = true;
 
     // When we do this operation we update any sessions that
     // are set to expire in the next 2 minutes
-    const REFRESH_EXPIRY_BEFORE = Date.now() + 1200 * 1000;
+    const REFRESH_EXPIRY_BEFORE = Date.now() + 120 * 1000;
     let toRefresh: string[];
     do {
-      console.log("about to get expiries");
       // eslint-disable-next-line no-await-in-loop
       const expiries = await this.getAllExpiries();
-      console.log("expiries retrieved");
 
       toRefresh = [];
 
@@ -474,7 +374,7 @@ export class SolidAuthenticationProvider
 
     if (typeof nextExpiry === "number") {
       console.log("updating timeout for", (nextExpiry * 1000) - Date.now());
-      this.updateTimeout(nextExpiry - Date.now());
+      this.updateTimeout((nextExpiry * 1000) - Date.now());
     }
 
     // Refreshes all necessary tokens
@@ -521,7 +421,7 @@ export class SolidAuthenticationProvider
 
   public updateTimeout(endsIn: number): void {
     // 30 seconds to be safe
-    const REFRESH_BEFORE_EXPIRATION = 3000 * 1000;
+    const REFRESH_BEFORE_EXPIRATION = 30 * 1000;
 
     const newEndsIn = endsIn - REFRESH_BEFORE_EXPIRATION;
 
@@ -616,22 +516,27 @@ export class SolidAuthenticationProvider
         // TODO: Give this the right storage
         let session = new Session({
           storage: this.storage,
+          onNewRefreshToken() {
+
+          },
           // secureStorage: this.storage.secureStorage,
           // insecureStorage: this.storage.insecureStorage,
           // clientAuthentication
         });
 
+        session.emit
+
         // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
-        const currentHandler = (session as any).clientAuthentication
-          .redirectHandler.handleables[0];
-        (session as any).clientAuthentication.redirectHandler.handleables[0] =
-          new AuthCodeRedirectHandler(
-            currentHandler.storageUtility,
-            currentHandler.sessionInfoManager,
-            currentHandler.issuerConfigFetcher,
-            currentHandler.clientRegistrar,
-            currentHandler.tokenRefresher
-          );
+        // const currentHandler = (session as any).clientAuthentication
+        //   .redirectHandler.handleables[0];
+        // (session as any).clientAuthentication.redirectHandler.handleables[0] =
+        //   new AuthCodeRedirectHandler(
+        //     currentHandler.storageUtility,
+        //     currentHandler.sessionInfoManager,
+        //     currentHandler.issuerConfigFetcher,
+        //     currentHandler.clientRegistrar,
+        //     currentHandler.tokenRefresher
+        //   );
 
         // TODO: See if it is plausible for this to occur after redirect call is made
         const handleRedirect = async (url: string) => {

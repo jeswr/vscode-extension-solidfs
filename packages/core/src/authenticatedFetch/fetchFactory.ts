@@ -22,11 +22,9 @@
 // eslint-disable-next-line no-shadow
 import { fetch, Headers } from "cross-fetch";
 import { EventEmitter } from "events";
-import { REFRESH_BEFORE_EXPIRATION_SECONDS, EVENTS } from "../constant";
+import { EVENTS } from "../constant";
 import { ITokenRefresher } from "../login/oidc/refresh/ITokenRefresher";
 import { createDpopHeader, KeyPair } from "./dpopUtils";
-import { OidcProviderError } from "../errors/OidcProviderError";
-import { InvalidResponseError } from "../errors/InvalidResponseError";
 
 export type RefreshOptions = {
   sessionId: string;
@@ -133,21 +131,6 @@ async function refreshAccessToken(
 }
 
 /**
- *
- * @param expiresIn Delay until the access token expires.
- * @returns a delay until the access token should be refreshed.
- */
-const computeRefreshDelay = (expiresIn?: number): number => {
-  if (expiresIn !== undefined) {
-    return expiresIn - REFRESH_BEFORE_EXPIRATION_SECONDS > 0
-      ? // We want to refresh the token 5 seconds before they actually expire.
-        expiresIn - REFRESH_BEFORE_EXPIRATION_SECONDS
-      : expiresIn;
-  }
-  return DEFAULT_EXPIRATION_TIME_SECONDS;
-};
-
-/**
  * @param unauthFetch a regular fetch function, compliant with the WHATWG spec.
  * @param authToken an access token, either a Bearer token or a DPoP one.
  * @param options The option object may contain two objects: the DPoP key token
@@ -166,99 +149,13 @@ export async function buildAuthenticatedFetch(
     eventEmitter?: EventEmitter;
   }
 ): Promise<typeof fetch> {
-  let currentAccessToken = accessToken;
-  let latestTimeout: Parameters<typeof clearTimeout>[0];
-  const currentRefreshOptions: RefreshOptions | undefined =
-    options?.refreshOptions;
-  // Setup the refresh timeout outside of the authenticated fetch, so that
-  // an idle app will not get logged out if it doesn't issue a fetch before
-  // the first expiration date.
-  if (currentRefreshOptions !== undefined) {
-    const proactivelyRefreshToken = async () => {
-      try {
-        const {
-          accessToken: refreshedAccessToken,
-          refreshToken,
-          expiresIn,
-        } = await refreshAccessToken(
-          currentRefreshOptions,
-          // If currentRefreshOptions is defined, options is necessarily defined too.
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          options!.dpopKey,
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          options!.eventEmitter
-        );
-        // Update the tokens in the closure if appropriate.
-        currentAccessToken = refreshedAccessToken;
-        if (refreshToken !== undefined) {
-          currentRefreshOptions.refreshToken = refreshToken;
-        }
-        // Each time the access token is refreshed, we must plan fo the next
-        // refresh iteration.
-        clearTimeout(latestTimeout);
-        latestTimeout = setTimeout(
-          proactivelyRefreshToken,
-          computeRefreshDelay(expiresIn) * 1000
-        );
-        // If currentRefreshOptions is defined, options is necessarily defined too.
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
-      } catch (e) {
-        // It is possible that an underlying library throws an error on refresh flow failure.
-        // If we used a log framework, the error could be logged at the `debug` level,
-        // but otherwise the failure of the refresh flow should not blow up in the user's
-        // face, so we just swallow the error.
-        if (e instanceof OidcProviderError) {
-          // The OIDC provider refused to refresh the access token and returned an error instead.
-          /* istanbul ignore next 100% coverage would require testing that nothing
-              happens here if the emitter is undefined, which is more cumbersome
-              than what it's worth. */
-          options?.eventEmitter?.emit(
-            EVENTS.ERROR,
-            e.error,
-            e.errorDescription
-          );
-          /* istanbul ignore next 100% coverage would require testing that nothing
-            happens here if the emitter is undefined, which is more cumbersome
-            than what it's worth. */
-          options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
-        }
-        if (
-          e instanceof InvalidResponseError &&
-          e.missingFields.includes("access_token")
-        ) {
-          // In this case, the OIDC provider returned a non-standard response, but
-          // did not specify that it was an error. We cannot refresh nonetheless.
-          /* istanbul ignore next 100% coverage would require testing that nothing
-            happens here if the emitter is undefined, which is more cumbersome
-            than what it's worth. */
-          options?.eventEmitter?.emit(EVENTS.SESSION_EXPIRED);
-        }
-      }
-    };
-    latestTimeout = setTimeout(
-      proactivelyRefreshToken,
-      // If currentRefreshOptions is defined, options is necessarily defined too.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      computeRefreshDelay(options!.expiresIn) * 1000
-    );
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    options!.eventEmitter?.emit(EVENTS.TIMEOUT_SET, latestTimeout);
-  } else if (options !== undefined && options.eventEmitter !== undefined) {
-    // If no refresh options are provided, the session expires when the access token does.
-    const expirationTimeout = setTimeout(() => {
-      // The event emitter is always defined in our code, and it would be tedious
-      // to test for conditions when it is not.
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      options.eventEmitter!.emit(EVENTS.SESSION_EXPIRED);
-    }, computeRefreshDelay(options.expiresIn) * 1000);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    options.eventEmitter!.emit(EVENTS.TIMEOUT_SET, expirationTimeout);
-  }
+
+  /* === CODE REMOVE FROM HERE === */
+
   return async (url, requestInit?): Promise<Response> => {
     let response = await makeAuthenticatedRequest(
       unauthFetch,
-      currentAccessToken,
+      accessToken, // === Rename
       url,
       requestInit,
       options?.dpopKey
@@ -280,7 +177,7 @@ export async function buildAuthenticatedFetch(
       // DPoP token) is.
       response = await makeAuthenticatedRequest(
         unauthFetch,
-        currentAccessToken,
+        accessToken, // === Rename
         // Replace the original target IRI (`url`) by the redirection target
         response.url,
         requestInit,

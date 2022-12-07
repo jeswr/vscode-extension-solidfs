@@ -49,3 +49,15 @@ code ./extensions/solidfs/
 ```
 
 and then press `fn`+`F5` in the new vscode window that is opened.
+
+## authn dependencies
+
+We have had to customise the authentication libraries to handle session management in vscode. The following 2 files
+have been modified compared to the source code for the authn libraries
+
+core/src/authenticatedFetch/fetchFactory - removed token refreshing functionality
+node/src/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler -
+ensure refresh token and access_token are saved to storage
+
+In each case comments starting with "===" have been added to indicate where the files deviate from the original authn
+libraries
