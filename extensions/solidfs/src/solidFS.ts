@@ -31,7 +31,7 @@ import {
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
-// TODO: Make sure this is properly used 
+// TODO: Make sure this is properly used
 const Container = DF.namedNode("http://www.w3.org/ns/ldp#Container");
 
 // TODO: Work out why we are *first* getting non-existant file errors
@@ -101,8 +101,6 @@ export class SolidFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    console.log("stat called on", uri);
-
     // TODO: See if we should be looking up parent dir instead?
     if (!(uri.path in this.stats)) {
       const fileType = await new Promise<boolean | undefined>(
@@ -141,12 +139,8 @@ export class SolidFS implements vscode.FileSystemProvider {
       );
 
       if (fileType !== undefined) {
-        console.log("setting filetype", fileType, "for", uri.path);
         this.stats[uri.path] = fileType;
       }
-
-      // const race = await Promise.race([ file, dir ])
-      // race.url.endsWith('/')
     }
 
     if (uri.path in this.stats) {
@@ -160,8 +154,6 @@ export class SolidFS implements vscode.FileSystemProvider {
         ctime: 0,
       };
     }
-
-    console.log("abotu to throw stat error for", uri);
 
     throw vscode.FileSystemError.FileNotFound(uri);
 
@@ -179,15 +171,12 @@ export class SolidFS implements vscode.FileSystemProvider {
   // in the container metadata.
   // TODO: See if we can just determine this based on trailing slash
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-    console.log("read directory called on", uri);
     const source = `${this.root}${
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
     try {
       const session = await this.session;
-
-      console.log("fetch object is", session, typeof session?.fetch);
 
       const bindings = await this.engine.queryBindings(
         `
@@ -221,10 +210,9 @@ export class SolidFS implements vscode.FileSystemProvider {
         })
         .toArray();
 
-      console.log("returning ", res);
       return res;
     } catch (e) {
-      // TODO: Properly log this
+      // TODO: Properly log this (or perhaps throw an error)
       console.error("error reading directory", e);
     }
 
@@ -232,7 +220,6 @@ export class SolidFS implements vscode.FileSystemProvider {
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
-    // console.log("create directory called on", uri);
     await createContainerAt(`${this.root}${uri.path.slice(1)}/`, {
       fetch: (await this.session)?.fetch,
     });
@@ -240,7 +227,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     await this.engine.invalidateHttpCache();
 
     this.fireSoon({ type: vscode.FileChangeType.Created, uri });
-    // throw new Error('Method not implemented.');
   }
 
   async readFile(uri: vscode.Uri): Promise<Uint8Array> {
@@ -279,10 +265,9 @@ export class SolidFS implements vscode.FileSystemProvider {
     const i = uri.path.lastIndexOf("/") + 1;
 
     // TODO: Predict this based on file type
-    const data = await ((await this.session)?.fetch ?? (globalThis as any).fetch)(
-      `${this.root}${uri.path.slice(1, i)}`,
-      { method: "HEAD" }
-    );
+    const data = await (
+      (await this.session)?.fetch ?? (globalThis as any).fetch
+    )(`${this.root}${uri.path.slice(1, i)}`, { method: "HEAD" });
     let contentType;
     if (data.status !== 200) {
       const ext = uri.path.slice(uri.path.lastIndexOf(".") + 1);
@@ -295,11 +280,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     }
 
     const buf = Buffer.from(content);
-    console.log(buf.toString("utf8"));
-
-    console.log("saving in container", `${this.root}${uri.path.slice(1, i)}`);
-    console.log("with slug", uri.path.slice(i));
-    console.log("with content type", contentType);
 
     await overwriteFile(`${this.root}${uri.path.slice(1)}`, buf, {
       fetch: (await this.session)?.fetch,
@@ -326,9 +306,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
-    console.log("delete called on", uri);
-    // TODO: Handle recursive
-
     const stat = await this.stat(uri);
 
     if (stat.type === vscode.FileType.File) {
@@ -345,10 +322,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     await this.engine.invalidateHttpCache();
     // TODO: Get this working
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
-
-    return;
-
-    throw new Error("Method not implemented.");
   }
 
   rename(
@@ -356,7 +329,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     newUri: vscode.Uri,
     options: { readonly overwrite: boolean }
   ): void | Thenable<void> {
-    console.log("rename file called on", oldUri, newUri, options);
     throw new Error("Method not implemented.");
   }
 
@@ -365,7 +337,6 @@ export class SolidFS implements vscode.FileSystemProvider {
     destination: vscode.Uri,
     options: { readonly overwrite: boolean }
   ): void | Thenable<void> {
-    console.log("cope called on", source, destination, options);
     throw new Error("Method not implemented.");
   }
 

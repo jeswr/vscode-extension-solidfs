@@ -149,7 +149,6 @@ export async function buildAuthenticatedFetch(
     eventEmitter?: EventEmitter;
   }
 ): Promise<typeof fetch> {
-
   /* === CODE REMOVE FROM HERE === */
 
   return async (url, requestInit?): Promise<Response> => {

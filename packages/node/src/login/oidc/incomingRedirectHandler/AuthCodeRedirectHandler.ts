@@ -153,7 +153,7 @@ export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
     }
     let refreshOptions: RefreshOptions | undefined;
     if (tokenSet.refresh_token !== undefined) {
-      eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refresh_token); 
+      eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refresh_token);
       /* === BEGIN CUSTOM ADDITION === */
       await this.storageUtility.setForUser(
         sessionId,
@@ -183,7 +183,11 @@ export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
     } else if (typeof tokenSet.expires_in === "number") {
       await this.storageUtility.setForUser(
         sessionId,
-        { expires_at: Math.floor(tokenSet.expires_in + (Date.now() / 1000)).toString() },
+        {
+          expires_at: Math.floor(
+            tokenSet.expires_in + Date.now() / 1000
+          ).toString(),
+        },
         { secure: true }
       );
     }

@@ -52,27 +52,19 @@ export async function getSolidFetch(
   scopes: readonly string[],
   options?: vscode.AuthenticationGetSessionOptions
 ): Promise<VscodeSolidSession | undefined> {
-  console.log("get solid fetch started");
-
   const session = await vscode.authentication.getSession(
     SOLID_AUTHENTICATION_PROVIDER_ID,
     scopes,
     options
   );
 
-  console.log("session retrieved");
-
   if (!session) return;
-
-  console.log("session not empty");
 
   let definedSession = session;
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
-  vscode.authentication.onDidChangeSessions(async (sessions) => { 
-    console.log('on did change sessions fired') 
+  vscode.authentication.onDidChangeSessions(async (sessions) => {
     if (sessions.provider.id === SOLID_AUTHENTICATION_PROVIDER_ID) {
-      console.log('ids match')
       const newSession = await vscode.authentication.getSession(
         SOLID_AUTHENTICATION_PROVIDER_ID,
         // Use the defined session scopes to ensure
@@ -80,11 +72,9 @@ export async function getSolidFetch(
         definedSession.scopes,
         { ...options, createIfNone: false }
       );
-      console.log('new session retrieved', newSession)
 
       if (definedSession.id === newSession?.id) {
-        console.log('session updated')
-        definedSession = newSession
+        definedSession = newSession;
       }
     }
   });

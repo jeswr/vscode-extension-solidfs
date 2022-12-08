@@ -38,8 +38,8 @@ import type {
   ExtensionContext,
 } from "vscode";
 import { EventEmitter } from "vscode";
-import { IStorageUtility } from "@inrupt/solid-client-authn-core";
 import { StorageUtility } from "@inrupt/solid-client-authn-core";
+import type { IStorageUtility } from "@inrupt/solid-client-authn-core";
 // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
 
 // TODO: Use this to get name of idp provider
@@ -49,6 +49,7 @@ import { StorageUtility } from "@inrupt/solid-client-authn-core";
 import { importJWK } from "jose";
 // import AuthCodeRedirectHandler from "./AuthCodeRedirectHandler";
 import { ISecretStorage } from "../storage";
+
 const DEFAULT_EXPIRATION_TIME_SECONDS = 600;
 
 // Get the time left on a NodeJS timeout (in milliseconds)
@@ -65,7 +66,6 @@ export class SolidAuthenticationProvider
   private sessionChangeEmitter =
     new EventEmitter<AuthenticationProviderAuthenticationSessionsChangeEvent>();
 
-  // private _disposable: Disposable;
   private storage: StorageUtility;
 
   private sessions?: Promise<Record<string, AuthenticationSession>>;
@@ -159,12 +159,9 @@ export class SolidAuthenticationProvider
         sessions[session.id] = session;
       }
       // Trigger refresh flow as appropriate and set timeout where appropriate
-      try {
-        // DO NOT AWAIT THIS - it should be a valid session
-        // immediately upon log in and it causes blocking (that we should debug)
-        this.handleRefresh();
-      } catch (e) {
-      }
+      // DO NOT AWAIT THIS - it should be a valid session
+      // immediately upon log in and it causes blocking (that we should debug)
+      this.handleRefresh().catch(() => {});
       return sessions;
     }));
 
@@ -215,15 +212,6 @@ export class SolidAuthenticationProvider
     }
   }
 
-  // async removeSession(sessionId: string): Promise<void> {
-
-  //   // await (this.sessions as any)?.session.logout();
-  //   // delete this.sessions;
-
-  //   // await clearSessionFromStorageAll(this.storage);
-  //   // await clearSessionFromStorage()
-  // }
-
   public async runRefresh(sessionId: string) {
     // Now we run the refresh process for the given session
     const session = (await this.sessions)?.[sessionId];
@@ -247,21 +235,20 @@ export class SolidAuthenticationProvider
           isLoggedIn: true,
           webId: session.id,
         },
-        
       });
 
       // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
       const currentHandler = (s2 as any).clientAuthentication.redirectHandler
         .handleables[0];
 
-      const refreshToken = (await this.storage.getForUser(
+      const refreshToken = await this.storage.getForUser(
         sessionId,
         "refreshToken",
         { secure: true, errorIfNull: true }
-      ));
+      );
 
       if (!refreshToken) {
-        throw new Error('refresh token is undefined');
+        throw new Error("refresh token is undefined");
       }
 
       const result = await currentHandler.tokenRefresher.refresh(
@@ -270,11 +257,12 @@ export class SolidAuthenticationProvider
         dpopKey
       );
 
-      const expiresAt = (
-        result.expiresIn ??
-        await this.storage.getForUser(sessionId, 'expires_in', { errorIfNull: false }) ??
-        DEFAULT_EXPIRATION_TIME_SECONDS
-      ) + Math.floor(Date.now() / 1000)
+      const expiresAt =
+        (result.expiresIn ??
+          (await this.storage.getForUser(sessionId, "expires_in", {
+            errorIfNull: false,
+          })) ??
+          DEFAULT_EXPIRATION_TIME_SECONDS) + Math.floor(Date.now() / 1000);
 
       await this.storage.setForUser(
         sessionId,
@@ -309,7 +297,7 @@ export class SolidAuthenticationProvider
           sessions[sessionId] = newAuthenticationSession;
         }
 
-        console.log('about to fire session change')
+        console.log("about to fire session change");
 
         this.sessionChangeEmitter.fire({
           changed: [newAuthenticationSession],
@@ -317,7 +305,7 @@ export class SolidAuthenticationProvider
           removed: [],
         });
 
-        console.log('post fire session change')
+        console.log("post fire session change");
 
         return sessions;
       });
@@ -346,48 +334,26 @@ export class SolidAuthenticationProvider
           typeof sessionId === "string" &&
           expiries[sessionId] * 1000 < REFRESH_EXPIRY_BEFORE
         ) {
-          console.log(
-            "refreshing sessionId",
-            expiries[sessionId] * 1000,
-            Date.now(),
-            REFRESH_EXPIRY_BEFORE
-          );
           toRefresh.push(sessionId);
-        } else {
-          console.log(
-            "to early to refresh",
-            expiries[sessionId] * 1000,
-            Date.now(),
-            REFRESH_EXPIRY_BEFORE
-          );
         }
       }
-
-      console.log("toRefresh", toRefresh);
 
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
         toRefresh.map((sessionId) => this.runRefresh(sessionId))
       );
-      
+
       // Make sure the sessions are resolved
+      // eslint-disable-next-line no-await-in-loop
       await this.sessions;
-
-      if (toRefresh.length > 0) {
-        console.log('breaking with toRefresh greater than 0', toRefresh)
-      }
-
     } while (toRefresh.length > 0);
 
     this.runningRefresh = false;
 
     const nextExpiry = await this.getNextExpiry();
 
-    console.log("next expiry is", nextExpiry);
-
     if (typeof nextExpiry === "number") {
-      console.log("updating timeout for", (nextExpiry * 1000) - Date.now());
-      this.updateTimeout((nextExpiry * 1000) - Date.now());
+      this.updateTimeout(nextExpiry * 1000 - Date.now());
     }
 
     // Refreshes all necessary tokens
@@ -396,7 +362,6 @@ export class SolidAuthenticationProvider
   // Get all expiries (in seconds since 1970-01-01T00:00:00Z)
   public async getAllExpiries(): Promise<Record<string, number>> {
     const sessions = await this.sessions;
-    console.log("awaited sessions", sessions);
 
     const expiries: Record<string, number> = {};
     for (const sessionId of sessions ? Object.keys(sessions) : []) {
@@ -408,13 +373,6 @@ export class SolidAuthenticationProvider
           "expires_at",
           { secure: true }
         );
-
-        // console.log(
-        //   'the user info is',
-        //   JSON.parse((await this.storage.get(`solidClientAuthenticationUser:${sessionId}`))!)
-        // )
-
-        console.log("expires at", expiresAt);
 
         if (typeof expiresAt === "string") {
           expiries[sessionId] = parseInt(expiresAt, 10);
@@ -438,23 +396,13 @@ export class SolidAuthenticationProvider
 
     const newEndsIn = endsIn - REFRESH_BEFORE_EXPIRATION;
 
-    console.log("updating timeout for", newEndsIn / 1000, "seconds from now");
-
-    // if (
-    //   typeof this.refreshTokenTimeout !== "undefined" &&
-    //   getTimeLeft(this.refreshTokenTimeout) < newEndsIn &&
-
-    // ) {
-    //   // We do not need to update the timeout in this case
-    //   return;
-    // }
-
-    console.log("setting timeout for", newEndsIn);
-    
-    const currentTimer = this.refreshTokenTimeout ? getTimeLeft(this.refreshTokenTimeout) : Infinity
+    const currentTimer = this.refreshTokenTimeout
+      ? getTimeLeft(this.refreshTokenTimeout)
+      : Infinity;
 
     // Only include the value of the current timer if it has not already timed out
-    let nextEndsIn = currentTimer > 0 ? Math.min(currentTimer, newEndsIn) : newEndsIn;
+    let nextEndsIn =
+      currentTimer > 0 ? Math.min(currentTimer, newEndsIn) : newEndsIn;
 
     // Make sure that timeout is still called if the period has passed
     nextEndsIn = Math.max(nextEndsIn, 0);
@@ -466,7 +414,7 @@ export class SolidAuthenticationProvider
 
       const nextExpiry = await this.getNextExpiry();
       if (typeof nextExpiry === "number") {
-        this.updateTimeout((nextExpiry * 1000) - Date.now());
+        this.updateTimeout(nextExpiry * 1000 - Date.now());
       }
     }, nextEndsIn);
   }
@@ -495,7 +443,6 @@ export class SolidAuthenticationProvider
             "https://solidcommunity.net/",
             "https://solidweb.me/",
             "https://pod.playground.solidlab.be/",
-            // "https://openid.release-ap-1-standalone.inrupt.com/",
             "https://trinpod.us/gmxLogin",
             "http://localhost:3000/",
             "Other",
@@ -531,35 +478,12 @@ export class SolidAuthenticationProvider
           return;
         }
 
-        progress.report({
-          message: `Preparing to log in with ${oidcIssuer}`,
-          // increment: 20
-        });
+        progress.report({ message: `Preparing to log in with ${oidcIssuer}` });
 
         // TODO: Give this the right storage
         let session = new Session({
           storage: this.storage,
-          onNewRefreshToken() {
-
-          },
-          // secureStorage: this.storage.secureStorage,
-          // insecureStorage: this.storage.insecureStorage,
-          // clientAuthentication
         });
-
-        session.emit
-
-        // Monkey patch the AuthCodeRedirectHandler with our custom one that saves the access_token to secret storage
-        // const currentHandler = (session as any).clientAuthentication
-        //   .redirectHandler.handleables[0];
-        // (session as any).clientAuthentication.redirectHandler.handleables[0] =
-        //   new AuthCodeRedirectHandler(
-        //     currentHandler.storageUtility,
-        //     currentHandler.sessionInfoManager,
-        //     currentHandler.issuerConfigFetcher,
-        //     currentHandler.clientRegistrar,
-        //     currentHandler.tokenRefresher
-        //   );
 
         // TODO: See if it is plausible for this to occur after redirect call is made
         const handleRedirect = async (url: string) => {
@@ -600,9 +524,7 @@ export class SolidAuthenticationProvider
             });
           });
 
-          progress.report({
-            message: `Completing login`,
-          });
+          progress.report({ message: `Completing login` });
 
           await session.handleIncomingRedirect(uri);
         } catch (e) {
@@ -664,16 +586,7 @@ export class SolidAuthenticationProvider
           { secure: true }
         );
 
-        // TODO: At this point we should be hooking into whichever handler has the updated access_
-        // session.onNewRefreshToken(() => {
-
-        // })
-
-        // Listen in for the custom event indicating a new access token
-        // TODO: Do removed on logout style events
-        // session.on("access_token", async (access_token: string) => {
-        //   await this.storage.setForUser(session.info.sessionId, { access_token }, { secure: true })
-
+        // TODO: See if we need an added event
         // this.sessionChangeEmitter.fire({
         //   changed: [
         //     await toAuthenticationSession(session, this.storage),
