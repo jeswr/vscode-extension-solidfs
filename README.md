@@ -50,6 +50,16 @@ code ./extensions/solidfs/
 
 and then press `fn`+`F5` in the new vscode window that is opened.
 
+*or*
+
+```shell
+gh repo clone inrupt/vscode-extension-solidfs
+cd ./vscode-extension-solidfs
+npm run predev:solidfs
+```
+
+and then press `fn`+`F5` in the new vscode window that is opened.
+
 ## authn dependencies
 
 We have had to customise the authentication libraries to handle session management in vscode. The following 2 files
@@ -61,3 +71,13 @@ ensure refresh token and access_token are saved to storage
 
 In each case comments starting with "===" have been added to indicate where the files deviate from the original authn
 libraries
+
+## Installation warning
+
+*Note* there is the following deprecation warning when installing the extension in the command line
+
+```bash
+(node:57198) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+```
+
+It occurs due to the use of `cross-fetch` in a nested dependency which uses a deprecated version of `node-fetch` and in turn `whatwg-url`.
