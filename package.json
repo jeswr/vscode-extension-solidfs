@@ -22,7 +22,8 @@
     "solidauth:link": "lerna run solidauth:link",
     "solidauth:install": "lerna run solidauth:install",
     "test:extensions": "lerna run test --concurrency 1 --stream",
-    "predev:all": "npm install && npm run build && npm run package && npm run solidauth:install",
+    "postinstall": "lerna bootstrap --ci && npm run build",
+    "predev:all": "npm install && npm run package && npm run solidauth:install",
     "predev:solidfs": "npm run predev:all && code ./extensions/solidfs",
     "test:packages": "jest --coverage --verbose",
     "test": "npm run test:extensions"
