@@ -69,26 +69,25 @@ export async function getSolidFetch(
   let definedSession = session;
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
-  vscode.authentication.onDidChangeSessions((sessions) => {
-    console.log('on did change sessions called', sessions)
-    
+  vscode.authentication.onDidChangeSessions(async (sessions) => { 
+    console.log('on did change sessions fired') 
     if (sessions.provider.id === SOLID_AUTHENTICATION_PROVIDER_ID) {
-      const newSession = vscode.authentication.getSession(
+      console.log('ids match')
+      const newSession = await vscode.authentication.getSession(
         SOLID_AUTHENTICATION_PROVIDER_ID,
-        scopes,
+        // Use the defined session scopes to ensure
+        // that the same WebId is used
+        definedSession.scopes,
         { ...options, createIfNone: false }
       );
+      console.log('new session retrieved', newSession)
 
-      Promise.all([session, newSession]).then(async ([old, news]) => {
-        if (old?.id === news?.id) {
-          definedSession = (await newSession) || definedSession;
-          console.log('session updated', definedSession)
-        }
-      });
+      if (definedSession.id === newSession?.id) {
+        console.log('session updated')
+        definedSession = newSession
+      }
     }
   });
-
-  console.log("creating fetch function");
 
   const f = async (
     input: RequestInfo | URL,
@@ -102,8 +101,6 @@ export async function getSolidFetch(
 
     return (await buildAuthenticatedFetchFromAccessToken(token))(input, init);
   };
-
-  console.log("fetch function created");
 
   return {
     fetch: f,

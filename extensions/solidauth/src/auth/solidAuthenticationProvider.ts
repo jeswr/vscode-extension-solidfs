@@ -305,11 +305,15 @@ export class SolidAuthenticationProvider
           sessions[sessionId] = newAuthenticationSession;
         }
 
+        console.log('about to fire session change')
+
         this.sessionChangeEmitter.fire({
           changed: [newAuthenticationSession],
           added: [],
           removed: [],
         });
+
+        console.log('post fire session change')
 
         return sessions;
       });
@@ -364,6 +368,11 @@ export class SolidAuthenticationProvider
       
       // Make sure the sessions are resolved
       await this.sessions;
+
+      if (toRefresh.length > 0) {
+        console.log('breaking with toRefresh greater than 0', toRefresh)
+      }
+
     } while (toRefresh.length > 0);
 
     this.runningRefresh = false;
@@ -427,17 +436,27 @@ export class SolidAuthenticationProvider
 
     console.log("updating timeout for", newEndsIn / 1000, "seconds from now");
 
-    if (
-      typeof this.refreshTokenTimeout !== "undefined" &&
-      getTimeLeft(this.refreshTokenTimeout) < newEndsIn
-    ) {
-      // We do not need to update the timeout in this case
-      return;
-    }
+    // if (
+    //   typeof this.refreshTokenTimeout !== "undefined" &&
+    //   getTimeLeft(this.refreshTokenTimeout) < newEndsIn &&
+
+    // ) {
+    //   // We do not need to update the timeout in this case
+    //   return;
+    // }
 
     console.log("setting timeout for", newEndsIn);
+    
+    const currentTimer = this.refreshTokenTimeout ? getTimeLeft(this.refreshTokenTimeout) : Infinity
+
+    // Only include the value of the current timer if it has not already timed out
+    let nextEndsIn = currentTimer > 0 ? Math.min(currentTimer, newEndsIn) : newEndsIn;
+
+    // Make sure that timeout is still called if the period has passed
+    nextEndsIn = Math.max(nextEndsIn, 0);
 
     clearTimeout(this.refreshTokenTimeout);
+
     this.refreshTokenTimeout = setTimeout(async () => {
       await this.handleRefresh();
 
@@ -445,7 +464,7 @@ export class SolidAuthenticationProvider
       if (typeof nextExpiry === "number") {
         this.updateTimeout((nextExpiry * 1000) - Date.now());
       }
-    }, newEndsIn);
+    }, nextEndsIn);
   }
 
   /**
