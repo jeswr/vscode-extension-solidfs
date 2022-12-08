@@ -50,7 +50,7 @@ code ./extensions/solidfs/
 
 and then press `fn`+`F5` in the new vscode window that is opened.
 
-*or*
+_or_
 
 ```shell
 gh repo clone inrupt/vscode-extension-solidfs
@@ -74,7 +74,7 @@ libraries
 
 ## Installation warning
 
-*Note* there is the following deprecation warning when installing the extension in the command line
+_Note_ there is the following deprecation warning when installing the extension in the command line
 
 ```bash
 (node:57198) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
