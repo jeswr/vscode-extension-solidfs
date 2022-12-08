@@ -1,4 +1,4 @@
 node_modules/
 license.csv
 dist/
-.vscode-test
+.vscode-test/
