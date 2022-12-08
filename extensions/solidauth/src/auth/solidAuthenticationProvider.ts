@@ -270,7 +270,11 @@ export class SolidAuthenticationProvider
         dpopKey
       );
 
-      const expiresAt = (result.expiresIn ?? DEFAULT_EXPIRATION_TIME_SECONDS) + Math.floor(Date.now() / 1000)
+      const expiresAt = (
+        result.expiresIn ??
+        await this.storage.getForUser(sessionId, 'expires_in', { errorIfNull: false }) ??
+        DEFAULT_EXPIRATION_TIME_SECONDS
+      ) + Math.floor(Date.now() / 1000)
 
       await this.storage.setForUser(
         sessionId,
