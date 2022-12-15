@@ -23,7 +23,7 @@ import { fetch as crossFetch } from "cross-fetch";
 import { importJWK } from "jose";
 import * as vscode from "vscode";
 
-const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
+export const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
 
 async function buildAuthenticatedFetchFromAccessToken(
   accessToken: string
@@ -52,40 +52,32 @@ export async function getSolidFetch(
   scopes: readonly string[],
   options?: vscode.AuthenticationGetSessionOptions
 ): Promise<VscodeSolidSession | undefined> {
-  console.log("get solid fetch started");
-
   const session = await vscode.authentication.getSession(
     SOLID_AUTHENTICATION_PROVIDER_ID,
     scopes,
     options
   );
 
-  console.log("session retrieved");
-
   if (!session) return;
-
-  console.log("session not empty");
 
   let definedSession = session;
 
   // TODO: Remove race conditions here (although they are unlikely to occur on any reasonable timeout scenarios)
-  vscode.authentication.onDidChangeSessions((sessions) => {
+  vscode.authentication.onDidChangeSessions(async (sessions) => {
     if (sessions.provider.id === SOLID_AUTHENTICATION_PROVIDER_ID) {
-      const newSession = vscode.authentication.getSession(
+      const newSession = await vscode.authentication.getSession(
         SOLID_AUTHENTICATION_PROVIDER_ID,
-        scopes,
+        // Use the defined session scopes to ensure
+        // that the same WebId is used
+        definedSession.scopes,
         { ...options, createIfNone: false }
       );
 
-      Promise.all([session, newSession]).then(async ([old, news]) => {
-        if (old?.id === news?.id) {
-          definedSession = (await newSession) || definedSession;
-        }
-      });
+      if (definedSession.id === newSession?.id) {
+        definedSession = newSession;
+      }
     }
   });
-
-  console.log("creating fetch function");
 
   const f = async (
     input: RequestInfo | URL,
@@ -99,8 +91,6 @@ export async function getSolidFetch(
 
     return (await buildAuthenticatedFetchFromAccessToken(token))(input, init);
   };
-
-  console.log("fetch function created");
 
   return {
     fetch: f,

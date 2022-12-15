@@ -1,54 +1,62 @@
-//
-// Copyright 2022 Inrupt Inc.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal in
-// the Software without restriction, including without limitation the rights to use,
-// copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
-// Software, and to permit persons to whom the Software is furnished to do so,
-// subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
-import type {
-  IIncomingRedirectHandler,
-  IStorageUtility,
-  ISessionInfoManager,
-  IIssuerConfigFetcher,
-  IClientRegistrar,
-  ITokenRefresher,
-  ISessionInfo,
-  IClient,
-  KeyPair,
-  RefreshOptions,
-} from "@inrupt/solid-client-authn-core";
-import {
-  getSessionIdFromOauthState,
-  loadOidcContextFromStorage,
-  generateDpopKeyPair,
-  EVENTS,
-  buildAuthenticatedFetch,
-  getWebidFromTokenPayload,
-  saveSessionInfoToStorage,
-} from "@inrupt/solid-client-authn-core";
-import { configToIssuerMetadata } from "@inrupt/solid-client-authn-node/dist/login/oidc/IssuerConfigFetcher";
-import type { KeyObject } from "crypto";
-import { fetch as globalFetch } from "cross-fetch";
-import type { EventEmitter } from "events";
-import { Issuer } from "openid-client";
+/*
+ * Copyright 2022 Inrupt Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to use,
+ * copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
+ * Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 
-export default class AuthCodeRedirectHandler
-  implements IIncomingRedirectHandler
-{
-  // eslint-disable-next-line no-useless-constructor
+/**
+ * @hidden
+ * @packageDocumentation
+ */
+
+import {
+  IClient,
+  IClientRegistrar,
+  IIssuerConfigFetcher,
+  IIncomingRedirectHandler,
+  ISessionInfo,
+  ISessionInfoManager,
+  IStorageUtility,
+  loadOidcContextFromStorage,
+  saveSessionInfoToStorage,
+  getSessionIdFromOauthState,
+  getWebidFromTokenPayload,
+  KeyPair,
+  generateDpopKeyPair,
+  RefreshOptions,
+  ITokenRefresher,
+  buildAuthenticatedFetch,
+  EVENTS,
+} from "@inrupt/solid-client-authn-core";
+// eslint-disable-next-line no-shadow
+import { URL } from "url";
+import { Issuer } from "openid-client";
+import { KeyObject } from "crypto";
+import { fetch as globalFetch } from "cross-fetch";
+
+import { EventEmitter } from "events";
+import { configToIssuerMetadata } from "../IssuerConfigFetcher";
+
+/**
+ * @hidden
+ * Token endpoint request: https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
+ */
+export class AuthCodeRedirectHandler implements IIncomingRedirectHandler {
   constructor(
     private storageUtility: IStorageUtility,
     private sessionInfoManager: ISessionInfoManager,
@@ -57,7 +65,6 @@ export default class AuthCodeRedirectHandler
     private tokenRefresher: ITokenRefresher
   ) {}
 
-  // eslint-disable-next-line class-methods-use-this
   async canHandle(redirectUrl: string): Promise<boolean> {
     try {
       const myUrl = new URL(redirectUrl);
@@ -147,12 +154,52 @@ export default class AuthCodeRedirectHandler
     let refreshOptions: RefreshOptions | undefined;
     if (tokenSet.refresh_token !== undefined) {
       eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refresh_token);
+      /* === BEGIN CUSTOM ADDITION === */
+      await this.storageUtility.setForUser(
+        sessionId,
+        { refreshToken: tokenSet.refresh_token },
+        { secure: true }
+      );
+      /* === END CUSTOM ADDITION === */
       refreshOptions = {
         refreshToken: tokenSet.refresh_token,
         sessionId,
         tokenRefresher: this.tokenRefresher,
       };
     }
+    /* === BEGIN CUSTOM ADDITION === */
+    await this.storageUtility.setForUser(
+      sessionId,
+      { access_token: tokenSet.access_token },
+      { secure: true }
+    );
+
+    if (typeof tokenSet.expires_at === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_at: tokenSet.expires_at.toString() },
+        { secure: true }
+      );
+    } else if (typeof tokenSet.expires_in === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        {
+          expires_at: Math.floor(
+            tokenSet.expires_in + Date.now() / 1000
+          ).toString(),
+        },
+        { secure: true }
+      );
+    }
+
+    if (typeof tokenSet.expires_in === "number") {
+      await this.storageUtility.setForUser(
+        sessionId,
+        { expires_in: tokenSet.expires_in.toString() },
+        { secure: true }
+      );
+    }
+    /* === END CUSTOM ADDITION === */
 
     const authFetch = await buildAuthenticatedFetch(
       globalFetch,
@@ -185,49 +232,6 @@ export default class AuthCodeRedirectHandler
       undefined,
       dpopKey
     );
-
-    console.log("setting", tokenSet.access_token, "for", sessionId);
-    await this.storageUtility.setForUser(
-      sessionId,
-      { access_token: tokenSet.access_token },
-      { secure: true }
-    );
-
-    if (typeof tokenSet.expires_at === "number") {
-      const eat = tokenSet.expires_at.toString();
-
-      console.log("setting expires at", eat);
-
-      await this.storageUtility.setForUser(
-        sessionId,
-        { expires_at: tokenSet.expires_at.toString() },
-        { secure: true }
-      );
-    } else if (typeof tokenSet.expires_in === "number") {
-      await this.storageUtility.setForUser(
-        sessionId,
-        { expires_at: (tokenSet.expires_in + Date.now()).toString() },
-        { secure: true }
-      );
-    }
-
-    if (typeof tokenSet.expires_in === "number") {
-      await this.storageUtility.setForUser(
-        sessionId,
-        { expires_in: tokenSet.expires_in.toString() },
-        { secure: true }
-      );
-    }
-
-    if (typeof tokenSet.refresh_token === "string") {
-      await this.storageUtility.setForUser(
-        sessionId,
-        { refresh_token: tokenSet.refresh_token },
-        { secure: true }
-      );
-    }
-
-    // console.log('the token set is', tokenSet)
 
     const sessionInfo = await this.sessionInfoManager.get(sessionId);
     if (!sessionInfo) {

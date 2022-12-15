@@ -98,7 +98,8 @@
 
     /* Completeness */
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+    "skipLibCheck": true,                                 /* Skip type checking all .d.ts files. */
+    "allowJs": true,
   },
   "include": [
     "packages/**/bin/**/*",
@@ -109,6 +110,8 @@
   "exclude": [
     "**/node_modules",
     "**/test/*",
+    "**/__test__/*",
+    "**/*.spec.ts",
     "**/*.d.ts",
     "**/*.d.ts"
   ]

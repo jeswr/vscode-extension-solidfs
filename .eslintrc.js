@@ -1,4 +1,3 @@
-
 require("@rushstack/eslint-patch/modern-module-resolution");
 
 module.exports = {
@@ -24,4 +23,7 @@ module.exports = {
     "@typescript-eslint/no-floating-promises": "off",
     "consistent-return": "off"
   },
+  "env": {
+    "jest": true
+  }
 }
