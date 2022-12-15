@@ -21,6 +21,7 @@
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import * as vscode from "vscode";
 import { getSolidFetch } from "@inrupt/solid-vscode-auth";
+import md5 = require('md5');
 import LinkHeader = require("http-link-header");
 import { SolidFS } from "./solidFS";
 // TODO: Investigate https://stackoverflow.com/questions/61959354/vscode-extension-add-custom-command-to-right-click-menu-in-file-explorer
@@ -72,7 +73,7 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
         // TODO: Refactor this
         context.subscriptions.push(
           vscode.workspace.registerFileSystemProvider(
-            `solidfs-${hashCode(webId)}-${hashCode(root)}`,
+            `solidfs-${md5(webId)}-${md5(root)}`,
             new SolidFS({ session, root, engine }),
             { isCaseSensitive: true }
           )
@@ -103,22 +104,6 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
   }
 
   console.log("end inti file system");
-}
-
-// See https://stackoverflow.com/questions/7616461/generate-a-hash-from-string-in-javascript
-function hashCode(str: string) {
-  let hash = 0;
-  let i;
-  let chr;
-  if (str.length === 0) return hash;
-  for (i = 0; i < str.length; i += 1) {
-    chr = str.charCodeAt(i);
-    // eslint-disable-next-line no-bitwise
-    hash = (hash << 5) - hash + chr;
-    // eslint-disable-next-line no-bitwise
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
 }
 
 // This method is called when your extension is activated
@@ -182,7 +167,7 @@ export async function activate(context: vscode.ExtensionContext) {
             try {
               context.subscriptions.push(
                 vscode.workspace.registerFileSystemProvider(
-                  `solidfs-${hashCode(webId)}-${hashCode(podRoot)}`,
+                  `solidfs-${md5(webId)}-${md5(podRoot)}`,
                   new SolidFS({ session, root: podRoot, engine }),
                   { isCaseSensitive: true }
                 )
@@ -200,7 +185,7 @@ export async function activate(context: vscode.ExtensionContext) {
               null,
               {
                 uri: vscode.Uri.parse(
-                  `solidfs-${hashCode(webId)}-${hashCode(podRoot)}:/`
+                  `solidfs-${md5(webId)}-${md5(podRoot)}:/`
                 ),
                 // name: new URL(webId).pathname.split("/").find((x) => x !== ""),
                 name: session.account.label,
@@ -211,10 +196,6 @@ export async function activate(context: vscode.ExtensionContext) {
           }
         }
       );
-
-      // The code you place here will be executed every time your command is executed
-      // Display a message box to the user
-      // vscode.window.showInformationMessage('Hello World from solidFS!');
     }
   );
 
@@ -227,9 +208,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
       console.log(
         "update workspace state",
-        await context.workspaceState.get("solidfs", undefined)
+        context.workspaceState.get("solidfs", undefined)
       );
-    })
+    }),
+
+
+    vscode.commands.registerCommand("solidfs.toggleMetadata", async () => {
+      await context.workspaceState.update("solidfs:showMetadata", !context.workspaceState.get("solidfs:showMetadata"))
+
+      // TODO: Trigger a refresh of the workspaces
+    }),
   );
 }
 

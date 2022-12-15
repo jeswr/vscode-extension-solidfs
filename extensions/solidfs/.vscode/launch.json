@@ -12,7 +12,6 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensions-dir=${workspaceFolder}/.vscode-test/extensions/",
-				// "--install-extension=${workspaceFolder}/.vscode-test/extensions/solidauth-0.0.1.vsix"
 			],
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
@@ -26,7 +25,6 @@
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensions-dir=${workspaceFolder}/.vscode-test/extensions/",
-				// "--install-extension=${workspaceFolder}/.vscode-test/extensions/solidauth-0.0.1.vsix",
 				"--extensionTestsPath=${workspaceFolder}/out/test/suite/index"
 			],
 			"outFiles": [

@@ -29,6 +29,7 @@ import {
   overwriteFile,
 } from "@inrupt/solid-client";
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
+import { copy, listPermissions, list, makeDirectory, remove,  } from 'solid-bashlib';
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
 // TODO: Make sure this is properly used
@@ -71,6 +72,29 @@ export class SolidFS implements vscode.FileSystemProvider {
   private engine: QueryEngine;
 
   private stats: Record<string, boolean> = { "/": true };
+
+  private _fetch?: typeof globalThis.fetch;
+
+  private all: boolean = false;
+
+  get fetch(): typeof globalThis.fetch {
+    if (this._fetch)
+      return this._fetch;
+
+    if (typeof this.session === 'undefined')
+      // TODO: See if we should be using cross-fetch here
+      return globalThis.fetch;
+
+    if ('fetch' in this.session)
+      return this.session.fetch;
+
+    return (...args: Parameters<typeof globalThis.fetch>) => {
+      return Promise.resolve(this.session).then(sess => {
+        this._fetch = sess!.fetch;
+        return sess!.fetch(...args)
+      })
+    };
+  }
 
   constructor(options: {
     session:
@@ -175,6 +199,18 @@ export class SolidFS implements vscode.FileSystemProvider {
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
+    // TODO: Assess performance impact of this
+    return (await list(source, { fetch: this.fetch, all: this.all, verbose: false })).map(src => [
+      src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
+      src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    ]);
+
+    // sources.map(src => {
+    //   src.
+    // })
+
+    return [];
+
     try {
       const session = await this.session;
 
@@ -220,11 +256,15 @@ export class SolidFS implements vscode.FileSystemProvider {
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
-    await createContainerAt(`${this.root}${uri.path.slice(1)}/`, {
-      fetch: (await this.session)?.fetch,
+    await makeDirectory(`${this.root}${uri.path.slice(1)}/`, {
+      fetch: this.fetch,
     });
-    // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
+
+    // await createContainerAt(`${this.root}${uri.path.slice(1)}/`, {
+    //   fetch: (await this.session)?.fetch,
+    // });
+    // // TODO: Don't be as aggressive - just invalidate the parent
+    // await this.engine.invalidateHttpCache();
 
     this.fireSoon({ type: vscode.FileChangeType.Created, uri });
   }
@@ -279,9 +319,7 @@ export class SolidFS implements vscode.FileSystemProvider {
       contentType = data.headers.get("Content-Type") ?? undefined;
     }
 
-    const buf = Buffer.from(content);
-
-    await overwriteFile(`${this.root}${uri.path.slice(1)}`, buf, {
+    await overwriteFile(`${this.root}${uri.path.slice(1)}`, Buffer.from(content), {
       fetch: (await this.session)?.fetch,
       contentType,
     });
@@ -302,42 +340,53 @@ export class SolidFS implements vscode.FileSystemProvider {
     // throw new Error('Method not implemented.');
   }
 
+  async vscodeUriToString(uri: vscode.Uri) {
+    const stat = await this.stat(uri);
+    return `${this.root}${uri.path.slice(1)}${stat.type === vscode.FileType.File ? '' : '/'}`
+  }
+
   async delete(
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
-    const stat = await this.stat(uri);
+    await remove(await this.vscodeUriToString(uri), { fetch: this.fetch, recursive: options.recursive })
 
-    if (stat.type === vscode.FileType.File) {
-      await deleteFile(`${this.root}${uri.path.slice(1)}`, {
-        fetch: (await this.session)?.fetch,
-      });
-    } else {
-      await deleteContainer(`${this.root}${uri.path.slice(1)}/`, {
-        fetch: (await this.session)?.fetch,
-      });
-    }
+    // const stat = await this.stat(uri);
 
-    // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
-    // TODO: Get this working
+    // remove
+
+    // if (stat.type === vscode.FileType.File) {
+    //   await deleteFile(`${this.root}${uri.path.slice(1)}`, {
+    //     fetch: (await this.session)?.fetch,
+    //   });
+    // } else {
+    //   await deleteContainer(`${this.root}${uri.path.slice(1)}/`, {
+    //     fetch: (await this.session)?.fetch,
+    //   });
+    // }
+
+    // // TODO: Don't be as aggressive - just invalidate the parent
+    // await this.engine.invalidateHttpCache();
+    // // TODO: Get this working
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
   }
 
-  rename(
-    oldUri: vscode.Uri,
-    newUri: vscode.Uri,
-    options: { readonly overwrite: boolean }
-  ): void | Thenable<void> {
-    throw new Error("Method not implemented.");
+  async rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean }): Promise<void> {
+    await this.copy(oldUri, newUri, options);
+    await this.delete(oldUri, { recursive: true });
   }
 
-  copy?(
+  async copy(
     source: vscode.Uri,
     destination: vscode.Uri,
     options: { readonly overwrite: boolean }
-  ): void | Thenable<void> {
-    throw new Error("Method not implemented.");
+  ): Promise<void> {
+    await copy(
+      await this.vscodeUriToString(source),
+      await this.vscodeUriToString(destination),
+      // TODO: double check the default override case is correct
+      { fetch: this.fetch, noOverride: options.overwrite !== false }
+    );
   }
 
   private bufferedEvents: vscode.FileChangeEvent[] = [];
