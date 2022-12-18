@@ -20,16 +20,57 @@
 //
 import type { QueryEngine } from "@comunica/query-sparql-solid";
 import type { Bindings } from "@rdfjs/types";
-import { DataFactory as DF } from "n3";
+import { DataFactory as DF, Store } from "n3";
 import * as vscode from "vscode";
-import {
-  deleteFile,
-  deleteContainer,
-  createContainerAt,
-  overwriteFile,
-} from "@inrupt/solid-client";
+import { overwriteFile } from "@inrupt/solid-client";
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
-import { copy, listPermissions, list, makeDirectory, remove,  } from 'solid-bashlib';
+import { copy, list, makeDirectory, remove } from "solid-bashlib";
+import type { NotificationOptions } from "@inrupt/solid-client-notifications";
+import { WebsocketNotification } from "@inrupt/solid-client-notifications";
+import { JsonLdParser } from "jsonld-streaming-parser";
+
+// class DisposableWebsocketNotification extends WebsocketNotification {
+//   dispose() {
+//     return this.disconnect();
+//   }
+// }
+
+class DisposableWebsocketNotification {
+  private socket: Promise<WebsocketNotification>;
+
+  constructor(topic: Promise<string>, options?: NotificationOptions) {
+    this.socket = topic.then((t) => new WebsocketNotification(t, options));
+  }
+
+  on(event: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.on(event, listener));
+  }
+
+  off(event: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.off(event, listener));
+  }
+
+  disconnect() {
+    this.socket.then((socket) => socket.disconnect());
+  }
+
+  dispose() {
+    this.disconnect();
+  }
+}
+
+interface WatchNotificationOptions extends NotificationOptions {
+  listener: (notification: object) => void;
+}
+
+function watchResource(
+  topic: Promise<string>,
+  options: WatchNotificationOptions
+) {
+  const socket = new DisposableWebsocketNotification(topic, options);
+  socket.on("message", options.listener);
+  return vscode.Disposable.from(socket);
+}
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
 // TODO: Make sure this is properly used
@@ -75,24 +116,22 @@ export class SolidFS implements vscode.FileSystemProvider {
 
   private _fetch?: typeof globalThis.fetch;
 
-  private all: boolean = false;
+  private all = false;
 
   get fetch(): typeof globalThis.fetch {
-    if (this._fetch)
-      return this._fetch;
+    if (this._fetch) return this._fetch;
 
-    if (typeof this.session === 'undefined')
+    if (typeof this.session === "undefined")
       // TODO: See if we should be using cross-fetch here
       return globalThis.fetch;
 
-    if ('fetch' in this.session)
-      return this.session.fetch;
+    if ("fetch" in this.session) return this.session.fetch;
 
     return (...args: Parameters<typeof globalThis.fetch>) => {
-      return Promise.resolve(this.session).then(sess => {
+      return Promise.resolve(this.session).then((sess) => {
         this._fetch = sess!.fetch;
-        return sess!.fetch(...args)
-      })
+        return sess!.fetch(...args);
+      });
     };
   }
 
@@ -120,8 +159,26 @@ export class SolidFS implements vscode.FileSystemProvider {
       readonly excludes: readonly string[];
     }
   ): vscode.Disposable {
+    return watchResource(this.vscodeUriToString(uri), {
+      async listener(notification: object) {
+        const store = new Store();
+        const myParser = new JsonLdParser();
+
+        await new Promise((resolve, reject) => {
+          myParser
+            .on("data", (quad) => store.add(quad))
+            .on("error", reject)
+            .on("end", resolve);
+
+          myParser.write(JSON.stringify(notification));
+          myParser.end();
+        });
+      },
+      fetch: this.fetch,
+    });
+    // const disposable = watchResource(this.vscodeUriToString(uri))
     // ignore, fires for all changes...
-    return new vscode.Disposable(() => {});
+    // return new vscode.Disposable(() => {});
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
@@ -200,7 +257,9 @@ export class SolidFS implements vscode.FileSystemProvider {
     }`;
 
     // TODO: Assess performance impact of this
-    return (await list(source, { fetch: this.fetch, all: this.all, verbose: false })).map(src => [
+    return (
+      await list(source, { fetch: this.fetch, all: this.all, verbose: false })
+    ).map((src) => [
       src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
       src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
     ]);
@@ -319,10 +378,14 @@ export class SolidFS implements vscode.FileSystemProvider {
       contentType = data.headers.get("Content-Type") ?? undefined;
     }
 
-    await overwriteFile(`${this.root}${uri.path.slice(1)}`, Buffer.from(content), {
-      fetch: (await this.session)?.fetch,
-      contentType,
-    });
+    await overwriteFile(
+      `${this.root}${uri.path.slice(1)}`,
+      Buffer.from(content),
+      {
+        fetch: (await this.session)?.fetch,
+        contentType,
+      }
+    );
 
     // Clear the comunica cache
     // TODO: Don't be as aggressive - just invalidate the parent
@@ -342,36 +405,27 @@ export class SolidFS implements vscode.FileSystemProvider {
 
   async vscodeUriToString(uri: vscode.Uri) {
     const stat = await this.stat(uri);
-    return `${this.root}${uri.path.slice(1)}${stat.type === vscode.FileType.File ? '' : '/'}`
+    return `${this.root}${uri.path.slice(1)}${
+      stat.type === vscode.FileType.File ? "" : "/"
+    }`;
   }
 
   async delete(
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
-    await remove(await this.vscodeUriToString(uri), { fetch: this.fetch, recursive: options.recursive })
-
-    // const stat = await this.stat(uri);
-
-    // remove
-
-    // if (stat.type === vscode.FileType.File) {
-    //   await deleteFile(`${this.root}${uri.path.slice(1)}`, {
-    //     fetch: (await this.session)?.fetch,
-    //   });
-    // } else {
-    //   await deleteContainer(`${this.root}${uri.path.slice(1)}/`, {
-    //     fetch: (await this.session)?.fetch,
-    //   });
-    // }
-
-    // // TODO: Don't be as aggressive - just invalidate the parent
-    // await this.engine.invalidateHttpCache();
-    // // TODO: Get this working
+    await remove(await this.vscodeUriToString(uri), {
+      fetch: this.fetch,
+      recursive: options.recursive,
+    });
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
   }
 
-  async rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean }): Promise<void> {
+  async rename(
+    oldUri: vscode.Uri,
+    newUri: vscode.Uri,
+    options: { readonly overwrite: boolean }
+  ): Promise<void> {
     await this.copy(oldUri, newUri, options);
     await this.delete(oldUri, { recursive: true });
   }

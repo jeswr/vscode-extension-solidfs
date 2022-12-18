@@ -69,9 +69,11 @@
     "@comunica/query-sparql-solid": "^2.4.0",
     "@inrupt/solid-client": "^1.23.3",
     "@inrupt/solid-client-authn-node": "^1.12.2",
+    "@inrupt/solid-client-notifications": "^1.1.1",
     "@inrupt/solid-vscode-auth": "^0.0.0",
     "@rdfjs/types": "^1.1.0",
     "http-link-header": "^1.1.0",
+    "jsonld-streaming-parser": "^3.0.1",
     "md5": "^2.3.0",
     "n3": "^1.16.3",
     "solid-bashlib": "^0.2.1"

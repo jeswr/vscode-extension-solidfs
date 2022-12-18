@@ -21,7 +21,7 @@
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import * as vscode from "vscode";
 import { getSolidFetch } from "@inrupt/solid-vscode-auth";
-import md5 = require('md5');
+import md5 = require("md5");
 import LinkHeader = require("http-link-header");
 import { SolidFS } from "./solidFS";
 // TODO: Investigate https://stackoverflow.com/questions/61959354/vscode-extension-add-custom-command-to-right-click-menu-in-file-explorer
@@ -212,12 +212,14 @@ export async function activate(context: vscode.ExtensionContext) {
       );
     }),
 
-
     vscode.commands.registerCommand("solidfs.toggleMetadata", async () => {
-      await context.workspaceState.update("solidfs:showMetadata", !context.workspaceState.get("solidfs:showMetadata"))
+      await context.workspaceState.update(
+        "solidfs:showMetadata",
+        !context.workspaceState.get("solidfs:showMetadata")
+      );
 
       // TODO: Trigger a refresh of the workspaces
-    }),
+    })
   );
 }
 
