@@ -5,6 +5,7 @@
     "packages/*",
     "extensions/*"
   ],
+  "version": "0.0.1",
   "scripts": {
     "package": "lerna run package --stream",
     "build": "lerna run build --stream",
@@ -21,7 +22,7 @@
     "licenses:check": "npm run licenses:check:root && npm run licenses:check:dep",
     "solidauth:link": "lerna run solidauth:link",
     "solidauth:install": "lerna run solidauth:install",
-    "solidauth:global:install": "code --install-extension extensions/solidauth/solidauth-0.0.1.vsix",
+    "solidauth:global:install": "code --install-extension extensions/solidauth/solidauth-$npm_package_version.vsix",
     "solidauth:global:uninstall": "code --uninstall-extension inrupt.solidauth",
     "test:extensions": "lerna run test --concurrency 1 --stream",
     "postinstall": "lerna bootstrap --ci && npm run build",
