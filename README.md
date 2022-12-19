@@ -3,7 +3,7 @@
 This repo contains the source code for vscode extensions to aid in the development of applications in Solid. Currently, the following extensions are provided:
 
 1. solidauth - implements the vscode `AuthenticationProvider` API to provide access to Solid authentication sessions in other vscode extensions.
-2. solidfs - view the filesytem view of solid.
+2. solidfs - view the filesytem view of Solid.
 
 ## Setup
 
@@ -59,6 +59,24 @@ npm run predev:solidfs
 ```
 
 and then press `fn`+`F5` in the new vscode window that is opened.
+
+## Additional (temporary) development workaround
+
+Because the [`--extensions-dir` option to code cli is ignored in ^1.74.0 of vscode](https://github.com/microsoft/vscode/issues/169035) the `solidauth:install` command does not work as expected; and so solidfs development will not work without *globally* installing the `solidauth` extension. If you need to do this run the following from the project root
+
+```
+npm run solidauth:global:install
+```
+
+to install the `solidauth` package after running the above commands. Note - this *will* override your installation of `solidauth` from the vscode marketplace if you have one.
+
+To cleanup after development, run
+
+```
+npm run solidauth:global:uninstall
+```
+
+__Though unlikely it may be that this was part of [an intentional change in vscode behaviour](https://github.com/microsoft/vscode/issues/166147#issuecomment-1313717266).__ If this is the case we will need to update our test launch configuration files to account for this.
 
 ## authn dependencies
 
