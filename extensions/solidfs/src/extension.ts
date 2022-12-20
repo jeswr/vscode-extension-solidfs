@@ -141,7 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
           cancellable: false,
         },
         async (progress, token) => {
-          progress.report({ message: "loading Pod root" });
+          progress.report({ message: "loading pod root" });
 
           const root = await getPodRoot(webId, fetchFn);
           let roots = root ? [root] : [];
@@ -161,7 +161,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
           progress.report({ message: "preparing workspace" });
 
-          await context.workspaceState.update(`solidfs`, { [webId]: roots });
+          await context.workspaceState.update('solidfs', { [webId]: roots });
 
           for (const podRoot of roots) {
             try {

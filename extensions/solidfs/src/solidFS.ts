@@ -182,6 +182,7 @@ export class SolidFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+    console.log('stat called on', `${uri}`)
     // TODO: See if we should be looking up parent dir instead?
     if (!(uri.path in this.stats)) {
       const fileType = await new Promise<boolean | undefined>(
@@ -256,21 +257,25 @@ export class SolidFS implements vscode.FileSystemProvider {
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
+
+    // This logic does not seem to currently be working on the CSS, hence why we are using the
+    // try/catch approach instead 
     // TODO: Assess performance impact of this
-    return (
-      await list(source, { fetch: this.fetch, all: this.all, verbose: false })
-    ).map((src) => [
-      src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
-      src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
-    ]);
+    // return (
+    //   await list(source, { fetch: this.fetch, all: this.all, verbose: false })
+    // ).map((src) => [
+    //   src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
+    //   src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    // ]);
 
-    // sources.map(src => {
-    //   src.
-    // })
+    // // sources.map(src => {
+    // //   src.
+    // // })
 
-    return [];
+    // return [];
 
     try {
+      console.log('begin reading dir')
       const session = await this.session;
 
       const bindings = await this.engine.queryBindings(
@@ -304,6 +309,8 @@ export class SolidFS implements vscode.FileSystemProvider {
           ];
         })
         .toArray();
+
+      console.log('returning', res)
 
       return res;
     } catch (e) {

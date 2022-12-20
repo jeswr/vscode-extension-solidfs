@@ -79,6 +79,8 @@
     "solid-bashlib": "^0.2.1"
   },
   "devDependencies": {
+    "@solid/community-server": "^5.1.0",
+    "cross-fetch": "^3.1.5",
     "solidauth": "^0.0.1"
   }
 }
