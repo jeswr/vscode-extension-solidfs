@@ -6,19 +6,6 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "SolidAuth: Run Extension",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"--profile-temp",
-				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
-			],
-			"outFiles": [
-				"${workspaceFolder}/extensions/solidauth/dist/**/*.js"
-			],
-			"preLaunchTask": "npx lerna run compile --scope solidfs"
-		},
-		{
 			"name": "SolidFS: Run Extension",
 			"type": "extensionHost",
 			"request": "launch",
@@ -29,8 +16,34 @@
 			"outFiles": [
 				"${workspaceFolder}/extensions/solidfs/dist/**/*.js"
 			],
-			// "preLaunchTask": "${defaultBuildTask}"
+			"preLaunchTask": "npm: compile - extensions/solidfs"
 		},
+		{
+			"name": "SolidAuth: Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--profile-temp",
+				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
+			],
+			"outFiles": [
+				"${workspaceFolder}/extensions/solidauth/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: compile - extensions/solidauth"
+		},
+		// {
+		// 	"name": "SolidFS: Run Extension",
+		// 	"type": "extensionHost",
+		// 	"request": "launch",
+		// 	"args": [
+		// 		"--profile-temp",
+		// 		"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidfs/",
+		// 	],
+		// 	"outFiles": [
+		// 		"${workspaceFolder}/extensions/solidfs/dist/**/*.js"
+		// 	],
+		// 	// "preLaunchTask": "${defaultBuildTask}"
+		// },
 		// {
 		// 	"name": "SolidAuth: Extension Tests",
 		// 	"type": "extensionHost",

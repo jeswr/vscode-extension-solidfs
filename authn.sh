@@ -7,7 +7,7 @@ if grep -q "currentRefreshOptions" $P1 ; then
     sed -i "401,435d" $P1
 fi
 
-# Add the refreshToken and timeouts to the storageUtility so that they can be accessed by the vscode Authentication
+# Add the refreshToken and timeouts to the storage so that they can be accessed by the vscode Authentication
 # Handler
 P2='./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js'
 
