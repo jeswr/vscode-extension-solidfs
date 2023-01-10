@@ -1,0 +1,50 @@
+// A launch configuration that compiles the extension and then opens it inside a new window
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "SolidAuth: Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--profile-temp",
+				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
+			],
+			"outFiles": [
+				"${workspaceFolder}/extensions/solidauth/dist/**/*.js"
+			],
+			"preLaunchTask": "npx lerna run compile --scope solidfs"
+		},
+		{
+			"name": "SolidFS: Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--profile-temp",
+				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidfs/",
+			],
+			"outFiles": [
+				"${workspaceFolder}/extensions/solidfs/dist/**/*.js"
+			],
+			// "preLaunchTask": "${defaultBuildTask}"
+		},
+		// {
+		// 	"name": "SolidAuth: Extension Tests",
+		// 	"type": "extensionHost",
+		// 	"request": "launch",
+		// 	"args": [
+		// 		"--profile-temp",
+		// 		"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidAuth",
+		// 		"--extensionTestsPath=${workspaceFolder}/extensions/solidAuth/out/test/suite/index",
+		// 	],
+		// 	"outFiles": [
+		// 		"${workspaceFolder}/extensions/solidAuth/out/**/*.js",
+		// 		"${workspaceFolder}/extensions/solidAuth/dist/**/*.js"
+		// 	],
+		// 	// "preLaunchTask": "tasks: watch-tests"
+		// }
+	]
+}
