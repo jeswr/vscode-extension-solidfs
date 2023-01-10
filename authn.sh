@@ -1,12 +1,16 @@
 # This script patches the authentication libraries to remove proactive refresh since session management needs to be
 # handled manually in the vscode authentication provider
 
+P1='./node_modules/@inrupt/solid-client-authn-core/dist/index.js'
 # Remove proactive refreshing from authenticatedFetch
-if grep -q "currentRefreshOptions" ./node_modules/@inrupt/solid-client-authn-core/dist/index.js ; then
-    sed -i "401,435d" ./node_modules/@inrupt/solid-client-authn-core/dist/index.js
+if grep -q "currentRefreshOptions" $P1 ; then
+    sed -i "401,435d" $P1
 fi
 
-# Patch the authentication token in the AuthCodeRedirectHandler so that it can be accessed
+# Add the refreshToken and timeouts to the storageUtility so that they can be accessed by the vscode Authentication
+# Handler
+P2='./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js'
+
 # After line 62
 PATCH_1="await this.storageUtility.setForUser(sessionId, { refreshToken: tokenSet.refresh_token }, { secure: true });"
 # After line 68
@@ -19,8 +23,7 @@ if (typeof expires_at === \"number\")\
 if (typeof tokenSet.expires_in === \"number\")\
  await this.storageUtility.setForUser( sessionId, { expires_in: tokenSet.expires_in.toString() }, { secure: true });"
 
-if ! grep -Fxq "$PATCH_2" ./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js
-then
-    sed -i "68 a$PATCH_2" ./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js
-    sed -i "62 a$PATCH_1" ./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js
+if ! grep -Fxq "$PATCH_2" $P2 ; then
+    sed -i "68 a$PATCH_2" $P2
+    sed -i "62 a$PATCH_1" $P2
 fi
