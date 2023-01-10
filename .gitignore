@@ -2,3 +2,5 @@ node_modules/
 license.csv
 dist/
 .vscode-test/
+packages/core
+packages/node

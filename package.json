@@ -28,7 +28,8 @@
     "predev:all": "npm install && npm run package && npm run solidauth:install",
     "predev:solidfs": "npm run predev:all && code ./extensions/solidfs",
     "test:packages": "jest --coverage --verbose",
-    "test": "npm run test:extensions"
+    "test": "npm run test:extensions",
+    "load": "chmod u+x ./install.sh && ./install.sh"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",

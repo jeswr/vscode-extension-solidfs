@@ -22,14 +22,11 @@
 // eslint-disable-next-line no-shadow
 import { fetch, Headers } from "cross-fetch";
 import { EventEmitter } from "events";
-import { EVENTS } from "../constant";
-import { ITokenRefresher } from "../login/oidc/refresh/ITokenRefresher";
 import { createDpopHeader, KeyPair } from "./dpopUtils";
 
 export type RefreshOptions = {
   sessionId: string;
   refreshToken: string;
-  tokenRefresher: ITokenRefresher;
 };
 
 /**
@@ -95,39 +92,7 @@ async function makeAuthenticatedRequest(
   defaultRequestInit?: RequestInit,
   dpopKey?: KeyPair
 ) {
-  return unauthFetch(
-    url,
-    await buildAuthenticatedHeaders(
-      url.toString(),
-      accessToken,
-      dpopKey,
-      defaultRequestInit
-    )
-  );
-}
-
-async function refreshAccessToken(
-  refreshOptions: RefreshOptions,
-  dpopKey?: KeyPair,
-  eventEmitter?: EventEmitter
-): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number }> {
-  const tokenSet = await refreshOptions.tokenRefresher.refresh(
-    refreshOptions.sessionId,
-    refreshOptions.refreshToken,
-    dpopKey
-  );
-  eventEmitter?.emit(
-    EVENTS.SESSION_EXTENDED,
-    tokenSet.expiresIn ?? DEFAULT_EXPIRATION_TIME_SECONDS
-  );
-  if (typeof tokenSet.refreshToken === "string") {
-    eventEmitter?.emit(EVENTS.NEW_REFRESH_TOKEN, tokenSet.refreshToken);
-  }
-  return {
-    accessToken: tokenSet.accessToken,
-    refreshToken: tokenSet.refreshToken,
-    expiresIn: tokenSet.expiresIn,
-  };
+  return unauthFetch(url, await buildAuthenticatedHeaders(url.toString(), accessToken, dpopKey, defaultRequestInit));
 }
 
 /**
