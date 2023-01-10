@@ -24,12 +24,12 @@
     "solidauth:global:install": "lerna run solidauth:global:install",
     "solidauth:global:uninstall": "lerna run solidauth:global:uninstall",
     "test:extensions": "lerna run test --concurrency 1 --stream",
-    "postinstall": "lerna bootstrap --ci && npm run build",
+    "postinstall": "npm run patch:authn && lerna bootstrap --ci && npm run build",
     "predev:all": "npm install && npm run package && npm run solidauth:install",
     "predev:solidfs": "npm run predev:all && code ./extensions/solidfs",
     "test:packages": "jest --coverage --verbose",
     "test": "npm run test:extensions",
-    "load": "chmod u+x ./install.sh && ./install.sh"
+    "patch:authn": "chmod u+x ./authn.sh && ./authn.sh"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
