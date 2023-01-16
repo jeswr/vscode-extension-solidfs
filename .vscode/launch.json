@@ -16,7 +16,7 @@
 			],
 			"outFiles": [
 				"${workspaceFolder}/extensions/solidfs/dist/**/*.js",
-				"${workspaceFolder}/extensions/solidauth/dist/**/*.js"
+				// "${workspaceFolder}/extensions/solidauth/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: compile"
 		},
