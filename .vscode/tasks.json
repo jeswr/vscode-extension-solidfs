@@ -18,6 +18,14 @@
 			"problemMatcher": [],
 			"label": "npm: compile - extensions/solidauth",
 			"detail": "webpack"
+		},
+		{
+			"type": "npm",
+			"script": "compile",
+			"group": "build",
+			"problemMatcher": [],
+			"label": "npm: compile",
+			"detail": "webpack"
 		}
 	]
 }

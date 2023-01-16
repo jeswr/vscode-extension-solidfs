@@ -29,7 +29,8 @@
     "predev:solidfs": "npm run predev:all && code ./extensions/solidfs",
     "test:packages": "jest --coverage --verbose",
     "test": "npm run test:extensions",
-    "patch:authn": "chmod u+x ./authn.sh && ./authn.sh"
+    "patch:authn": "chmod u+x ./authn.sh && ./authn.sh",
+    "compile": "lerna run compile"
   },
   "devDependencies": {
     "@babel/core": "^7.20.2",
