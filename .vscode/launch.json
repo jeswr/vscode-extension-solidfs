@@ -15,22 +15,10 @@
 				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
 			],
 			"outFiles": [
-				"${workspaceFolder}/extensions/solidfs/dist/**/*.js"
-			],
-			"preLaunchTask": "npm: compile"
-		},
-		{
-			"name": "SolidAuth: Run Extension",
-			"type": "extensionHost",
-			"request": "launch",
-			"args": [
-				"--profile-temp",
-				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
-			],
-			"outFiles": [
+				"${workspaceFolder}/extensions/solidfs/dist/**/*.js",
 				"${workspaceFolder}/extensions/solidauth/dist/**/*.js"
 			],
-			"preLaunchTask": "npm: compile - extensions/solidauth"
+			"preLaunchTask": "npm: compile"
 		},
 	]
 }
