@@ -2,9 +2,22 @@
 
 This repo contains the source code for vscode extensions to aid in the development of applications in Solid. Currently, the following extensions are provided:
 
-1. solidauth - implements the vscode `AuthenticationProvider` API to provide access to Solid authentication sessions in other vscode extensions.
-2. solidfs - view the filesytem view of Solid.
+1. `solidAuth` - implements the vscode `AuthenticationProvider` API to provide access to Solid authentication sessions in other vscode extensions.
+2. `solidFs` - view the filesytem view of Solid.
 
+## Developing the Extensions
+
+To begin developing in this repository run
+
+```
+# Install dependencies
+# Note that the authn packages are patched using `authn.sh` in a postinstall step
+npm i
+```
+
+then from the root use the hotkey `fn`+`f5` to launch the extension development host; this invokes the launch configuration in the root of the project that will build and launch `solidAuth` and `solidFS` together in an [Extension Development Host](https://code.visualstudio.com/api/advanced-topics/extension-host) with a [Temporary Profile](https://code.visualstudio.com/updates/v1_72#_extension-debugging-in-a-clean-environment).
+
+<!-- (what follows is the required steps before we had a good launch config)
 ## Setup
 
 ```shell
@@ -89,6 +102,7 @@ ensure refresh token and access_token are saved to storage
 
 In each case comments starting with "===" have been added to indicate where the files deviate from the original authn
 libraries
+-->
 
 ## Installation warning
 
