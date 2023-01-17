@@ -73,9 +73,5 @@
     "@inrupt/solid-client-authn-node": "^1.12.4",
     "@inrupt/solid-vscode-auth": "^0.0.0",
     "solid-node-interactive-auth": "1.1.1"
-  },
-  "overrides": {
-    "@inrupt/solid-client-authn-node": "$@inrupt/solid-client-authn-node",
-    "@inrupt/solid-client-authn-core": "$@inrupt/solid-client-authn-core"
   }
 }
