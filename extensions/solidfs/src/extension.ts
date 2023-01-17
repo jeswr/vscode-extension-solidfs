@@ -74,7 +74,7 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
         context.subscriptions.push(
           vscode.workspace.registerFileSystemProvider(
             `solidfs-${md5(webId)}-${md5(root)}`,
-            new SolidFS({ session, root, engine }),
+            new SolidFS({ session, root, engine, all: !!context.workspaceState.get("solidfs:showMetadata") }),
             { isCaseSensitive: true }
           )
         );
@@ -168,7 +168,7 @@ export async function activate(context: vscode.ExtensionContext) {
               context.subscriptions.push(
                 vscode.workspace.registerFileSystemProvider(
                   `solidfs-${md5(webId)}-${md5(podRoot)}`,
-                  new SolidFS({ session, root: podRoot, engine }),
+                  new SolidFS({ session, root: podRoot, engine, all: !!context.workspaceState.get("solidfs:showMetadata") }),
                   { isCaseSensitive: true }
                 )
               );
@@ -213,10 +213,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand("solidfs.toggleMetadata", async () => {
-      await context.workspaceState.update(
-        "solidfs:showMetadata",
-        !context.workspaceState.get("solidfs:showMetadata")
-      );
+      const showMetadata = !context.workspaceState.get("solidfs:showMetadata");
+
+      vscode.window.showInformationMessage(`Metadata view ${showMetadata ? 'enabled' : 'disabled'}`);
+
+      await context.workspaceState.update("solidfs:showMetadata", showMetadata);
 
       // TODO: Trigger a refresh of the workspaces
     })

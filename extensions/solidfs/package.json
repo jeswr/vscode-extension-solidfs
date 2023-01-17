@@ -47,6 +47,11 @@
         "command": "solidfs.clear",
         "title": "Clear current workspaces",
         "category": "solidFS"
+      },
+      {
+        "command": "solidfs.toggleMetadata",
+        "title": "Toggle Metadata",
+        "category": "solidFS"
       }
     ]
   },

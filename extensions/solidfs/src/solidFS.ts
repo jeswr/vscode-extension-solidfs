@@ -142,10 +142,12 @@ export class SolidFS implements vscode.FileSystemProvider {
       | Promise<VscodeSolidSession | undefined>;
     root: string;
     engine: QueryEngine;
+    all: boolean;
   }) {
     this.session = options.session;
     this.root = options.root;
     this.engine = options.engine;
+    this.all = options.all
   }
 
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
@@ -261,12 +263,16 @@ export class SolidFS implements vscode.FileSystemProvider {
     // This logic does not seem to currently be working on the CSS, hence why we are using the
     // try/catch approach instead 
     // TODO: Assess performance impact of this
-    // return (
-    //   await list(source, { fetch: this.fetch, all: this.all, verbose: false })
-    // ).map((src) => [
-    //   src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
-    //   src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
-    // ]);
+    return (
+      await list(source, { fetch: this.fetch, all: this.all, verbose: false })
+    )
+    // This filter is required since ACLs do not necessarily live in the same storage location,
+    // for instance the ACLs for the ESS live at https://authorization.ap.inrupt.com/8b81bf5d2ffb4fa0b5b82a419ecd9829
+    .filter(src => src.url.startsWith(source))
+    .map((src) => [
+      src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
+      src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    ]);
 
     // // sources.map(src => {
     // //   src.
@@ -339,6 +345,8 @@ export class SolidFS implements vscode.FileSystemProvider {
     try {
       const session = await this.session;
       if (session) {
+        const resource = `${this.root}${uri.path.slice(1)}`;
+
         const result = await session.fetch(`${this.root}${uri.path.slice(1)}`);
         // TODO: Do not just return an empty buffer when fetch is not working
         if (result.status === 200) {
@@ -351,9 +359,11 @@ export class SolidFS implements vscode.FileSystemProvider {
           // TODO: Error here once we have fixed the empty-file giving 406 error
           return Uint8Array.from([]);
         }
-
         // TODO: Be more granular with permissions here (e.g. throw )
-        vscode.FileSystemError.Unavailable(await result.text());
+
+        vscode.window.showErrorMessage(`Error retrieving remote resource [${resource}]: ${await result.text()}`)
+
+        vscode.FileSystemError.Unavailable(`Error retrieving remote resource [${resource}]: ${await result.text()}`);
       }
     } catch (e) {
       // noop
