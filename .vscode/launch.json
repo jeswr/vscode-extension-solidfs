@@ -6,6 +6,28 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Launch via npm",
+			"type": "node",
+			"request": "launch",
+			"cwd": "${workspaceFolder}",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run-script", "solidauth:test"],
+			"skipFiles": [
+				"node_modules/**",
+				"<node_internals>/**",
+				"/home/jesse/Documents/github/vscode-extension-solidfs/node_modules/ts-loader/dist/resolver.js"
+			],
+		},
+		// {
+		// 	"name": "Temp Testing",
+		// 	"type": "node-terminal",
+		// 	"request": "launch",
+			// "skipFiles": [
+			// 	"node_modules/**"
+			// ],
+		// 	"postDebugTask": "npm solidauth:test"
+		// },
+		{
 			"name": "SolidFS: Run Extension",
 			"type": "extensionHost",
 			"request": "launch",

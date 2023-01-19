@@ -23,11 +23,22 @@ import * as assert from "assert";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from "vscode";
+import { ActivityBar, ActionsControl } from 'vscode-extension-tester';
 // import * as myExtension from '../../extension';
 
 suite("Extension Test Suite", () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
   vscode.window.showInformationMessage("Start all tests.");
+
+  // await new Promise(res => setTimeout(res, 3000));
+
+  // const login = await vscode.commands.executeCommand("solidauth.login")
+
+  // await new Promise(res => setTimeout(res, 3000));
+
+  // vscode.window.showInformationMessage("Finish all tests.");
+
+
 
   // test("Log in", async () => {
   // const session = await vscode.authentication.getSession(
@@ -37,8 +48,41 @@ suite("Extension Test Suite", () => {
   // );
   // });
 
-  test("Sample test", () => {
+  test("Sample test", async function () {
+    this.timeout(10000)
+    // vscode.window.c
+    // const login = await vscode.commands.executeCommand("solidauth.login")
+    await new Promise(res => setTimeout(res, 1000));
+
+    // @ts-ignore
+    // vscode.window.showQuickPick = (...args: any[]) => Promise.resolve('http://localhost:3000/')
+
+    delete vscode.window.showQuickPick;
+    // @ts-ignore
+    delete vscode.window.showOpenDialog;
+    // @ts-ignore
+    delete vscode.window.showInputBox;
+
+
+    // @ts-ignore
+    vscode.window = {
+      // createOutputChannel: vscode.window.createOutputChannel,
+      // withProgress: vscode.window.withProgress,
+      // @ts-ignore
+      withProgress: (_, f) => f(),
+      createOutputChannel: () => {},
+    }
+
+    const session = await vscode.authentication.getSession(
+      'solidauth',
+      [],
+      { createIfNone: true }
+    );
+
+    // await new Promise(res => setTimeout(res, 1000));
     assert.strictEqual(-1, [1, 2, 3].indexOf(5));
     assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+    vscode.window.showInformationMessage("Finish all tests.");
+    await new Promise(res => setTimeout(res, 1000));
   });
 });

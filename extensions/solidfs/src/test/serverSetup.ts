@@ -1,21 +1,12 @@
 import * as path from 'path';
-import { AppRunner, resolveModulePath } from '@solid/community-server';
+import { createApp as create } from '@jeswr/css-init-utils';
 
 export function createApp() {
-  return new AppRunner().create(
-    {
-      mainModulePath: resolveModulePath(''),
-      typeChecking: false,
-    },
-    resolveModulePath('config/default.json'),
-    {},
-    {
-      port: 3_010,
-      loggingLevel: 'off',
-      // seededPodConfigJson: path.join(__dirname, 'configs', 'solid-css-seed.json'),
-      seededPodConfigJson: path.join(__dirname, '..', '..', 'src', 'test', 'configs', 'solid-css-seed.json'),
-    },
-  );
+  return create({
+    port: 3_010,
+    loggingLevel: 'off',
+    seededPodConfigJson: path.join(__dirname, '..', '..', 'src', 'test', 'configs', 'solid-css-seed.json'),
+  });
 }
 
 // (async () => {

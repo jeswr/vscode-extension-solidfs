@@ -110,8 +110,6 @@ export class SolidFS implements vscode.FileSystemProvider {
 
   private root: string;
 
-  private engine: QueryEngine;
-
   private stats: Record<string, boolean> = { "/": true };
 
   private _fetch?: typeof globalThis.fetch;
@@ -141,12 +139,10 @@ export class SolidFS implements vscode.FileSystemProvider {
       | undefined
       | Promise<VscodeSolidSession | undefined>;
     root: string;
-    engine: QueryEngine;
     all: boolean;
   }) {
     this.session = options.session;
     this.root = options.root;
-    this.engine = options.engine;
     this.all = options.all
   }
 
@@ -280,63 +276,57 @@ export class SolidFS implements vscode.FileSystemProvider {
 
     // return [];
 
-    try {
-      console.log('begin reading dir')
-      const session = await this.session;
+    // try {
+    //   console.log('begin reading dir')
+    //   const session = await this.session;
 
-      const bindings = await this.engine.queryBindings(
-        `
-      SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
-        {
-          "@comunica/actor-http-inrupt-solid-client-authn:session": {
-            fetch: session?.fetch,
-            info: {
-              webId: session?.account.id,
-              isLoggedIn: true,
-            },
-          },
-          sources: [source],
-        }
-      );
+    //   const bindings = await this.engine.queryBindings(
+    //     `
+    //   SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
+    //     {
+    //       "@comunica/actor-http-inrupt-solid-client-authn:session": {
+    //         fetch: session?.fetch,
+    //         info: {
+    //           webId: session?.account.id,
+    //           isLoggedIn: true,
+    //         },
+    //       },
+    //       sources: [source],
+    //     }
+    //   );
 
-      const res = await bindings
-        .map<[string, vscode.FileType]>((binding) => {
-          const str = binding.get("o")!.value;
-          const isDir = str.endsWith("/");
-          const path = str.slice(
-            this.root.length - 1,
-            str.length - Number(isDir)
-          );
-          this.stats[path] = isDir;
+    //   const res = await bindings
+    //     .map<[string, vscode.FileType]>((binding) => {
+    //       const str = binding.get("o")!.value;
+    //       const isDir = str.endsWith("/");
+    //       const path = str.slice(
+    //         this.root.length - 1,
+    //         str.length - Number(isDir)
+    //       );
+    //       this.stats[path] = isDir;
 
-          return [
-            str.slice(this.root.length - 1, str.length - Number(isDir)),
-            isDir ? vscode.FileType.Directory : vscode.FileType.File,
-          ];
-        })
-        .toArray();
+    //       return [
+    //         str.slice(this.root.length - 1, str.length - Number(isDir)),
+    //         isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    //       ];
+    //     })
+    //     .toArray();
 
-      console.log('returning', res)
+    //   console.log('returning', res)
 
-      return res;
-    } catch (e) {
-      // TODO: Properly log this (or perhaps throw an error)
-      console.error("error reading directory", e);
-    }
+    //   return res;
+    // } catch (e) {
+    //   // TODO: Properly log this (or perhaps throw an error)
+    //   console.error("error reading directory", e);
+    // }
 
-    return [];
+    // return [];
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
     await makeDirectory(`${this.root}${uri.path.slice(1)}/`, {
       fetch: this.fetch,
     });
-
-    // await createContainerAt(`${this.root}${uri.path.slice(1)}/`, {
-    //   fetch: (await this.session)?.fetch,
-    // });
-    // // TODO: Don't be as aggressive - just invalidate the parent
-    // await this.engine.invalidateHttpCache();
 
     this.fireSoon({ type: vscode.FileChangeType.Created, uri });
   }
@@ -406,7 +396,7 @@ export class SolidFS implements vscode.FileSystemProvider {
 
     // Clear the comunica cache
     // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
+    // await this.engine.invalidateHttpCache();
 
     delete this.stats[uri.path];
     if (data.status !== 200) {

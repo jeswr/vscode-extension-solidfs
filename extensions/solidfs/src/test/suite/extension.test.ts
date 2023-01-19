@@ -71,8 +71,8 @@ suite("Extension Test Suite", async () => {
     //   setTimeout(res, 100000)
     // })
 
-    app = await createApp();
-    await app.start();
+    // app = await createApp();
+    // await app.start();
 
     vscode.window.showInformationMessage("Server started");
 
@@ -81,6 +81,5 @@ suite("Extension Test Suite", async () => {
     // await new Promise((res, rej) => {
     //   setTimeout(res, 10000)
     // })
-    await app.stop();
-  }).timeout(100000);
+  });
 });

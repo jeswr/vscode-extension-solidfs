@@ -74,7 +74,8 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
         context.subscriptions.push(
           vscode.workspace.registerFileSystemProvider(
             `solidfs-${md5(webId)}-${md5(root)}`,
-            new SolidFS({ session, root, engine, all: !!context.workspaceState.get("solidfs:showMetadata") }),
+            new SolidFS({ session, root, all: !!context.workspaceState.get("solidfs:showMetadata") }),
+            // URLs are case sensitive
             { isCaseSensitive: true }
           )
         );
@@ -168,7 +169,7 @@ export async function activate(context: vscode.ExtensionContext) {
               context.subscriptions.push(
                 vscode.workspace.registerFileSystemProvider(
                   `solidfs-${md5(webId)}-${md5(podRoot)}`,
-                  new SolidFS({ session, root: podRoot, engine, all: !!context.workspaceState.get("solidfs:showMetadata") }),
+                  new SolidFS({ session, root: podRoot, all: !!context.workspaceState.get("solidfs:showMetadata") }),
                   { isCaseSensitive: true }
                 )
               );
