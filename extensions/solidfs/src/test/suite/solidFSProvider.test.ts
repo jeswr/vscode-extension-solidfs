@@ -18,8 +18,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-import { afterEach, beforeEach, describe } from "mocha";
-import { step, xstep } from "mocha-steps";
+import { afterEach, beforeEach } from "mocha";
 
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
@@ -68,71 +67,73 @@ suite("solidFS Provider Unit Test Suite", async () => {
 
   // TODO: Work out how to do this with describe and mocka steps rather than one massive test.
   // TODO: Have content type checks
-  test("Modify Pod", async () => {
+  test("Modify Pod", async function () {
+    this.timeout(5000)
 
     // Create a new folder in the root
-    assert.strictEqual(
-      await vscode.workspace.fs.createDirectory(createUri('/myFolder/')),
-      void 0
-    );
-    
+    assert.strictEqual(await vscode.workspace.fs.createDirectory(createUri('/myFolder/')), undefined);
+  
+  });
+  test("Create a new file in /myFolder/", async function () {
     // Create a new file in /myFolder/
     assert.strictEqual(
       await vscode.workspace.fs.writeFile(createUri('/myFolder/myFile'), (new TextEncoder).encode("<a> <b> <c> .")),
-      void 0
+      undefined
     );
-
+  
+  });
+  test("Create a new file in the root", async function () {
     // Create a new file in the root
     assert.strictEqual(
       await vscode.workspace.fs.writeFile(createUri('/myFile'), (new TextEncoder).encode("<a1> <b1> <c1> .")),
-      void 0
+      undefined
     );
 
+  });
+  test("Create an empty file in the root", async function () {
     // Create an empty file in the root
-    assert.strictEqual(
-      await vscode.workspace.fs.writeFile(createUri('/empty'), new Uint8Array()),
-      void 0
-    );
-
+    assert.strictEqual(await vscode.workspace.fs.writeFile(createUri('/empty'), new Uint8Array()), undefined);
+  });
+  test("Create an empty ttl file in the root", async function () {
     // Create an empty ttl file in the root
-    assert.strictEqual(
-      await vscode.workspace.fs.writeFile(createUri('/myEmptyFile.ttl'), new Uint8Array()),
-      void 0
-    );
-
-    assert.deepEqual(
-      await vscode.workspace.fs.readFile(createUri('/myEmptyFile.ttl')),
-      new Uint8Array()
-    );
+    assert.strictEqual(await vscode.workspace.fs.writeFile(createUri('/myEmptyFile.ttl'), new Uint8Array()), undefined);
+  });
+  test("Read empty ttl file in the root", async function () {
+    assert.deepEqual(await vscode.workspace.fs.readFile(createUri('/myEmptyFile.ttl')), new Uint8Array());
     
     console.log(`deleting [${createUri('')}]`)
 
+    // https://github.com/SolidLabResearch/Bashlib/
     await vscode.workspace.fs.delete(createUri(''))
 
     // await assert.rejects(
     //   vscode.workspace.fs.delete(createUri('')) as Promise<void>,
     //   new Error('this is a message')
     // )
+  });
 
-    // Delete root
+  test("Should reject when attempting to delete root", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/')) as Promise<void>,
       // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
     )
+  });
 
-    // Delete root - explicitly allowing recursive deletion
+  test("Should reject when trying to delete root - explicitly allowing recursive deletion", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/'), { recursive: true }) as Promise<void>,
       // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
     )
+  });
 
-    // Delete root - explicitly forbidding recursive deletion
+  test("Should reject when trying to delete root - explicitly forbidding recursive deletion", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/'), { recursive: false }) as Promise<void>,
       // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
     )
-    
-    // Reading the root directory
+    });
+  
+  test("Reading the root directory", async function () {
     assert.deepEqual(
       await vscode.workspace.fs.readDirectory(createUri('/')),
       // TODO: Dont make assumptions about order
@@ -165,7 +166,9 @@ suite("solidFS Provider Unit Test Suite", async () => {
         ]
       ]
     );
-
+  });
+  
+  test("Reading the /myFolder", async function () {
   assert.deepEqual(
     await vscode.workspace.fs.readDirectory(createUri('/myFolder')),
     // TODO: Dont make assumptions about order
@@ -178,6 +181,9 @@ suite("solidFS Provider Unit Test Suite", async () => {
     ]
   );
 
+});
+  
+test("Reading the root directory (again?)", async function () {
   assert.deepEqual(
     await vscode.workspace.fs.readDirectory(createUri('/')),
     // TODO: Dont make assumptions about order

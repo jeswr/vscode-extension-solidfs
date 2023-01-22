@@ -180,7 +180,7 @@ export class SolidFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    console.log('stat called on', `${uri}`)
+    // console.log('stat called on', `${uri}`)
     // TODO: See if we should be looking up parent dir instead?
     if (!(uri.path in this.stats)) {
       const fileType = await new Promise<boolean | undefined>(
@@ -366,7 +366,7 @@ export class SolidFS implements vscode.FileSystemProvider {
     content: Uint8Array,
     options: { readonly create: boolean; readonly overwrite: boolean }
   ): Promise<void> {
-    console.log("write file called on", uri);
+    // console.log("write file called on", uri);
     // TODO: See if we need to trigger an update
     const i = uri.path.lastIndexOf("/") + 1;
 
@@ -421,6 +421,7 @@ export class SolidFS implements vscode.FileSystemProvider {
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
+    console.log('removing', await this.vscodeUriToString(uri))
     await remove(await this.vscodeUriToString(uri), {
       fetch: this.fetch,
       recursive: options.recursive,
