@@ -11,9 +11,9 @@ fi
 # Handler
 P2='./node_modules/@inrupt/solid-client-authn-node/dist/login/oidc/incomingRedirectHandler/AuthCodeRedirectHandler.js'
 
-# After line 62
+# After line 65
 PATCH_1="await this.storageUtility.setForUser(sessionId, { refreshToken: tokenSet.refresh_token }, { secure: true });"
-# After line 68
+# After line 72
 PATCH_2="await this.storageUtility.setForUser(sessionId, { access_token: tokenSet.access_token }, { secure: true });\
 let expires_at = typeof tokenSet.expires_at === \"number\"\
  ? tokenSet.expires_at.toString()\
@@ -24,6 +24,6 @@ if (typeof tokenSet.expires_in === \"number\")\
  await this.storageUtility.setForUser( sessionId, { expires_in: tokenSet.expires_in.toString() }, { secure: true });"
 
 if ! grep -Fxq "$PATCH_2" $P2 ; then
-    sed -i "68 a$PATCH_2" $P2
-    sed -i "62 a$PATCH_1" $P2
+    sed -i "72 a$PATCH_2" $P2
+    sed -i "65 a$PATCH_1" $P2
 fi
