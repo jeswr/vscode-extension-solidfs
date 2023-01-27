@@ -81,6 +81,7 @@ export class SolidAuthenticationProvider
   }
 
   get onDidChangeSessions() {
+    console.log('on did change session called')
     return this.sessionChangeEmitter.event;
   }
 
@@ -107,6 +108,8 @@ export class SolidAuthenticationProvider
   async getSessions(
     scopes?: readonly string[] | undefined
   ): Promise<readonly AuthenticationSession[]> {
+    console.log('get sessions called')
+
     // If we do not have any sessions cached then recover them from the storage
     if (!this.sessions) {
       this.sessions = this.getSessionsPromise();
@@ -118,6 +121,9 @@ export class SolidAuthenticationProvider
       });
     }
 
+
+    console.log('a')
+
     let allSessions = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
@@ -128,11 +134,15 @@ export class SolidAuthenticationProvider
       async () => Object.values(await this.sessions!)
     );
 
+    console.log('b')
+
     if (scopes) {
       allSessions = allSessions.filter((session) =>
         scopes.every((scope) => session.scopes.includes(scope))
       );
     }
+
+    console.log('c', allSessions)
 
     return allSessions;
   }
@@ -173,6 +183,8 @@ export class SolidAuthenticationProvider
   }
 
   async removeAllSessions() {
+    console.log('remove all sessions called')
+
     await clearSessionFromStorageAll(this.storage);
 
     const sessions = await this.sessions;
@@ -189,6 +201,7 @@ export class SolidAuthenticationProvider
   }
 
   async removeSession(sessionId: string): Promise<void> {
+    console.log('remove session called')
     this.storage.deleteAllUserData(sessionId);
 
     if (this.sessions) {
@@ -213,6 +226,8 @@ export class SolidAuthenticationProvider
   }
 
   public async runRefresh(sessionId: string) {
+    console.log('refresh called')
+
     // Now we run the refresh process for the given session
     const session = (await this.sessions)?.[sessionId];
 
@@ -315,17 +330,26 @@ export class SolidAuthenticationProvider
   private runningRefresh = false;
 
   public async handleRefresh() {
+    console.log('handle refresh called')
     if (this.runningRefresh) return;
 
+    console.log('a1')
+
     this.runningRefresh = true;
+
+    console.log('a2')
 
     // When we do this operation we update any sessions that
     // are set to expire in the next 2 minutes
     const REFRESH_EXPIRY_BEFORE = Date.now() + 120 * 1000;
     let toRefresh: string[];
     do {
+
+      console.log('a3')
       // eslint-disable-next-line no-await-in-loop
       const expiries = await this.getAllExpiries();
+
+      console.log('a4')
 
       toRefresh = [];
 
@@ -338,29 +362,42 @@ export class SolidAuthenticationProvider
         }
       }
 
+      console.log('a5')
+
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(
         toRefresh.map((sessionId) => this.runRefresh(sessionId))
       );
 
+      console.log('a6')
+
       // Make sure the sessions are resolved
       // eslint-disable-next-line no-await-in-loop
       await this.sessions;
+
+      console.log('a7')
     } while (toRefresh.length > 0);
 
     this.runningRefresh = false;
 
+    console.log('a8')
+
     const nextExpiry = await this.getNextExpiry();
+
+    console.log('a9')
 
     if (typeof nextExpiry === "number") {
       this.updateTimeout(nextExpiry * 1000 - Date.now());
     }
+
+    console.log('a10')
 
     // Refreshes all necessary tokens
   }
 
   // Get all expiries (in seconds since 1970-01-01T00:00:00Z)
   public async getAllExpiries(): Promise<Record<string, number>> {
+    console.log('get all expeiries')
     const sessions = await this.sessions;
 
     const expiries: Record<string, number> = {};
@@ -380,17 +417,22 @@ export class SolidAuthenticationProvider
       }
     }
 
+
+    console.log('get all expeiries done')
+
     return expiries;
   }
 
   // Get next expiry (in seconds since 1970-01-01T00:00:00Z)
   public async getNextExpiry(): Promise<number | undefined> {
+    console.log('get next expiry')
     const expiries = Object.values(await this.getAllExpiries());
 
     return expiries.length > 0 ? Math.min(...expiries) : undefined;
   }
 
   public updateTimeout(endsIn: number): void {
+    console.log('update timeout')
     // 30 seconds to be safe
     const REFRESH_BEFORE_EXPIRATION = 30 * 1000;
 
@@ -423,11 +465,14 @@ export class SolidAuthenticationProvider
    * Dispose the registered services
    */
   public async dispose() {
+    console.log('dispose called')
     // Stop refreshing tokens
     clearTimeout(this.refreshTokenTimeout);
   }
 
   private async login() {
+    console.log('login called')
+
     // TODO: Finish this based on https://www.eliostruyf.com/create-authentication-provider-visual-studio-code/
     return vscode.window.withProgress(
       {
@@ -436,6 +481,8 @@ export class SolidAuthenticationProvider
         cancellable: true,
       },
       async (progress, token) => {
+        console.log('getting oidc issuer')
+        
         // TODO: Get these from a remote list of trusted providers (and then cache)
         let oidcIssuer = await vscode.window.showQuickPick(
           [
@@ -459,6 +506,8 @@ export class SolidAuthenticationProvider
           token
         );
 
+        console.log('using oidc issuer', oidcIssuer)
+
         if (token.isCancellationRequested) {
           return;
         }
@@ -474,19 +523,28 @@ export class SolidAuthenticationProvider
           );
         }
 
+        console.log('recieved updated oidc', oidcIssuer)
+
         if (token.isCancellationRequested) {
           return;
         }
 
+        console.log('about to report progress')
+
         progress.report({ message: `Preparing to log in with ${oidcIssuer}` });
+
+        console.log('after report progress')
 
         // TODO: Give this the right storage
         let session = new Session({
           storage: this.storage,
         });
 
+        console.log('a')
+
         // TODO: See if it is plausible for this to occur after redirect call is made
         const handleRedirect = async (url: string) => {
+          console.log('handle redirect called with', url)
           if (!token.isCancellationRequested) {
             progress.report({
               message: `Redirecting to ${oidcIssuer}`,
@@ -499,12 +557,23 @@ export class SolidAuthenticationProvider
           }
         };
 
+        console.log('b')
+
         const clientName = `${vscode.env.appName} (${this.context.extension.packageJSON.name})`;
 
+        console.log('c')
+
         try {
+          // Skip straight to intractive login
+          // throw new Error('')
+
+          console.log('d')
+
           const redirectUrl = `${vscode.env.uriScheme}://${
             this.context.extension.id
           }/${v4()}/redirect`;
+
+          console.log('awaiting login')
 
           await session.login({
             redirectUrl,
@@ -512,6 +581,8 @@ export class SolidAuthenticationProvider
             handleRedirect,
             clientName,
           });
+
+          console.log('login completed')
 
           const uri = await new Promise<string>((resolve) => {
             const disposable = vscode.window.registerUriHandler({
@@ -523,6 +594,8 @@ export class SolidAuthenticationProvider
               },
             });
           });
+
+          console.log('uri retrieved', uri)
 
           progress.report({ message: `Completing login` });
 
@@ -596,7 +669,13 @@ export class SolidAuthenticationProvider
         // });
         // });
 
-        return toAuthenticationSession(session, this.storage);
+        console.log('about to convert to authentication session')
+
+        const authsession = await toAuthenticationSession(session, this.storage);
+        
+        console.log('converted to auth session',authsession)
+
+        return authsession;
       }
     );
   }
@@ -606,6 +685,7 @@ async function toAuthenticationSessionOrClear(
   sessionId: string,
   storage: IStorageUtility
 ): Promise<void | vscode.AuthenticationSession> {
+  console.log('to auth session or clear')
   try {
     // Do not remove this await otherwise the error will reject outside
     // of the try/catch statement
@@ -619,6 +699,7 @@ async function toAuthenticationSessionFromStorage(
   sessionId: string,
   storage: IStorageUtility
 ) {
+  console.log('to auth session from storage')
   const session = await getSessionFromStorage(sessionId, storage);
 
   if (!session) {
@@ -632,6 +713,7 @@ async function getAccessToken(
   sessionId: string,
   storage: IStorageUtility
 ): Promise<string> {
+  console.log('getting access token from', JSON.stringify(storage, null, 2))
   return JSON.stringify({
     access_token: await storage.getForUser(sessionId, "access_token", {
       secure: true,

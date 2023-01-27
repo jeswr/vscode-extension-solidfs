@@ -36,7 +36,7 @@
     "@types/vscode": "^1.73.1"
   },
   "dependencies": {
-    "@inrupt/solid-client-authn-core": "^1.12.4",
+    "@inrupt/solid-client-authn-core": "^1.13.0",
     "cross-fetch": "^3.1.5",
     "jose": "^4.11.2"
   }

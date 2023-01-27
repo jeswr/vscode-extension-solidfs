@@ -66,11 +66,11 @@
     "test": "node ./out/test/runTest.js"
   },
   "dependencies": {
-    "@comunica/query-sparql": "^2.5.2",
+    "@comunica/query-sparql": "^2.6.0",
     "@comunica/query-sparql-solid": "^2.4.0",
-    "@inrupt/solid-client": "^1.24.0",
-    "@inrupt/solid-client-authn-core": "^1.12.4",
-    "@inrupt/solid-client-authn-node": "^1.12.4",
+    "@inrupt/solid-client": "^1.25.0",
+    "@inrupt/solid-client-authn-core": "^1.13.0",
+    "@inrupt/solid-client-authn-node": "^1.13.0",
     "@inrupt/solid-vscode-auth": "^0.0.0",
     "solid-node-interactive-auth": "1.1.1"
   }

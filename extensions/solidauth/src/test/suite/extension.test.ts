@@ -24,7 +24,11 @@ import * as assert from "assert";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 import { ActivityBar, ActionsControl } from 'vscode-extension-tester';
+import { SolidAuthenticationProvider } from '../../auth/solidAuthenticationProvider';
 // import * as myExtension from '../../extension';
+import { cssRedirectFactory } from '@jeswr/css-auth-utils';
+import puppeteer from 'puppeteer';
+import open = require('open');
 
 suite("Extension Test Suite", () => {
   // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -49,19 +53,32 @@ suite("Extension Test Suite", () => {
   // });
 
   test("Sample test", async function () {
-    this.timeout(10000)
+    this.timeout(20000)
     // vscode.window.c
     // const login = await vscode.commands.executeCommand("solidauth.login")
-    await new Promise(res => setTimeout(res, 1000));
+    // await new Promise(res => setTimeout(res, 1000));
 
     // @ts-ignore
     // vscode.window.showQuickPick = (...args: any[]) => Promise.resolve('http://localhost:3000/')
 
-    delete vscode.window.showQuickPick;
+    // delete vscode.window.showQuickPick;
     // @ts-ignore
-    delete vscode.window.showOpenDialog;
+    // delete vscode.window.showOpenDialog;
     // @ts-ignore
-    delete vscode.window.showInputBox;
+    // delete vscode.window.showInputBox;
+    
+    // @ts-ignore
+    // vscode.window = new Proxy(vscode.window, {
+
+    // })
+
+    const progress: vscode.Progress<{
+      message?: string | undefined;
+      increment?: number | undefined;
+  }> = {
+    report() {}
+  }
+  
 
 
     // @ts-ignore
@@ -69,15 +86,91 @@ suite("Extension Test Suite", () => {
       // createOutputChannel: vscode.window.createOutputChannel,
       // withProgress: vscode.window.withProgress,
       // @ts-ignore
-      withProgress: (_, f) => f(),
+      withProgress: (_, f) => f({ report() {} }, { isCancellationRequested: false }),
       createOutputChannel: () => {},
+      showInformationMessage: () => {},
+      showQuickPick: () => Promise.resolve('http://localhost:3010/'),
     }
 
-    const session = await vscode.authentication.getSession(
-      'solidauth',
-      [],
-      { createIfNone: true }
-    );
+    const openExternal = vscode.env.openExternal
+
+    // @ts-ignore
+    vscode.env.openExternal = async (url: vscode.Uri) => {
+  //     console.log(`query [${url.query}]`)
+  //   console.log(`externally opening [${url.toString(true)}]`)
+  //   await open(url.toString(true))
+  //   await new Promise((resolve) => {});
+  //   return;
+
+  //  // Visit the redirect url
+  //  const browser = await puppeteer.launch({ headless: false });
+  //  const page = await browser.newPage();
+  //  await page.goto(`${url}`);
+
+  //  // Block at this step
+
+  //  await new Promise((resolve) => {});
+  //  return;
+
+  //  // Fill out the username / password form
+  //  await page.type('input[id=email]', "hello@example.com");
+  //  await page.type('input[name=password]', 'abc123');
+  //  await page.click('button[type=submit]');
+
+  //  // Navigate to the authorise page
+  //  await page.waitForNavigation();
+
+  //  // Click the authorise button
+  //  await page.click('button[type=submit]');
+
+  //  // Navigate to the authorise page
+  //  await page.waitForNavigation();
+
+  //  // Close the page and browser
+  //  await page.close();
+  //  await browser.close();
+
+
+      console.log(`Opening [${url}]`)
+      await cssRedirectFactory("hello@example.com", 'abc123')(url.toString(true));
+      console.log('flow complete')
+      // console.log('open external', url)
+    }
+
+    console.log('pre get session')
+
+    const secretData: Record<string, string> = {};
+
+    const authProvider = new SolidAuthenticationProvider({
+      secrets: {
+        get: async (key: string) => secretData[key],
+        store: async (key: string, value: string) => {
+          // console.log(key, value)
+          try {
+            // console.log(JSON.parse(value))
+          } catch {
+            
+          }
+          secretData[key] = value;
+        },
+        delete:  async (key: string) => delete secretData[key],
+    },
+      extension: { packageJSON: { name: 'VSCode Mock' } },
+    } as any);
+
+    const sessions = await authProvider.getSessions();
+
+    assert.deepEqual(sessions, []);
+
+    const newSession = await authProvider.createSession([]);
+
+    console.log(newSession)
+
+    // const session = await vscode.authentication.getSession(
+    //   'solidauth',
+    //   [],
+    //   { createIfNone: true }
+    // );
 
     // await new Promise(res => setTimeout(res, 1000));
     assert.strictEqual(-1, [1, 2, 3].indexOf(5));

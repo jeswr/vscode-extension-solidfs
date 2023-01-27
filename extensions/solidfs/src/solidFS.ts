@@ -24,7 +24,7 @@ import { DataFactory as DF, Store } from "n3";
 import * as vscode from "vscode";
 import { overwriteFile } from "@inrupt/solid-client";
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
-import { copy, list, makeDirectory, remove } from "solid-bashlib";
+import { copy, list, makeDirectory, remove, Logger } from "solid-bashlib";
 import type { NotificationOptions } from "@inrupt/solid-client-notifications";
 import { WebsocketNotification } from "@inrupt/solid-client-notifications";
 import { JsonLdParser } from "jsonld-streaming-parser";
@@ -34,6 +34,15 @@ import { JsonLdParser } from "jsonld-streaming-parser";
 //     return this.disconnect();
 //   }
 // }
+
+const errorLogger: Logger = {
+  log(...msg) {
+    
+  },
+  error(...msg) {
+    throw new Error(msg.join(', '));
+  },
+}
 
 class DisposableWebsocketNotification {
   private socket: Promise<WebsocketNotification>;
@@ -260,7 +269,7 @@ export class SolidFS implements vscode.FileSystemProvider {
     // try/catch approach instead 
     // TODO: Assess performance impact of this
     return (
-      await list(source, { fetch: this.fetch, all: this.all, verbose: false })
+      await list(source, { fetch: this.fetch, all: this.all, verbose: false, logger: errorLogger })
     )
     // This filter is required since ACLs do not necessarily live in the same storage location,
     // for instance the ACLs for the ESS live at https://authorization.ap.inrupt.com/8b81bf5d2ffb4fa0b5b82a419ecd9829
@@ -425,6 +434,7 @@ export class SolidFS implements vscode.FileSystemProvider {
     await remove(await this.vscodeUriToString(uri), {
       fetch: this.fetch,
       recursive: options.recursive,
+      logger: errorLogger
     });
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
   }
@@ -447,7 +457,7 @@ export class SolidFS implements vscode.FileSystemProvider {
       await this.vscodeUriToString(source),
       await this.vscodeUriToString(destination),
       // TODO: double check the default override case is correct
-      { fetch: this.fetch, noOverride: options.overwrite !== false }
+      { fetch: this.fetch, noOverride: options.overwrite !== false, logger: errorLogger }
     );
   }
 

@@ -100,38 +100,57 @@ suite("solidFS Provider Unit Test Suite", async () => {
   });
   test("Read empty ttl file in the root", async function () {
     assert.deepEqual(await vscode.workspace.fs.readFile(createUri('/myEmptyFile.ttl')), new Uint8Array());
-    
-    console.log(`deleting [${createUri('')}]`)
-
-    // https://github.com/SolidLabResearch/Bashlib/
-    await vscode.workspace.fs.delete(createUri(''))
-
-    // await assert.rejects(
-    //   vscode.workspace.fs.delete(createUri('')) as Promise<void>,
-    //   new Error('this is a message')
-    // )
   });
 
-  test("Should reject when attempting to delete root", async function () {
+  test("Should reject when attempting to delete the root", async function () {
+    await assert.rejects(
+      vscode.workspace.fs.delete(createUri('')) as Promise<void>,
+      // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
+      /^Error \(FileSystemError\): Please use the recursive option when removing containers$/,
+      'Error (FileSystemError): Please use the recursive option when removing containers',
+    )
+  });
+
+  // This *actually* deletes the files; we should 
+  // test("Should reject when trying to delete the root - explicitly allowing recursive deletion", async function () {
+  //   await assert.rejects(
+  //     vscode.workspace.fs.delete(createUri(''), { recursive: true }) as Promise<void>,
+  //     // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
+  //   )
+  // });
+
+  test("Should reject when trying to delete the root - explicitly forbidding recursive deletion", async function () {
+    await assert.rejects(
+      vscode.workspace.fs.delete(createUri(''), { recursive: false }) as Promise<void>,
+      /^Error \(FileSystemError\): Please use the recursive option when removing containers$/,
+      'Error (FileSystemError): Please use the recursive option when removing containers',
+    )
+  });
+  
+
+  test("Should reject when attempting to delete (/)", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/')) as Promise<void>,
-      // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
+      /^Error \(FileSystemError\): Fetching the Resource at \[http:\/\/localhost:3010\/example\/\/\] failed: \[404\] \[Not Found\].$/,
+      'Error (FileSystemError): Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].',
     )
   });
 
-  test("Should reject when trying to delete root - explicitly allowing recursive deletion", async function () {
+  test("Should reject when trying to delete (/) - explicitly allowing recursive deletion", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/'), { recursive: true }) as Promise<void>,
-      // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
+      /^Error \(FileSystemError\): Fetching the Resource at \[http:\/\/localhost:3010\/example\/\/\] failed: \[404\] \[Not Found\].$/,
+      'Error (FileSystemError): Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].',
     )
   });
 
-  test("Should reject when trying to delete root - explicitly forbidding recursive deletion", async function () {
+  test("Should reject when trying to delete (/) - explicitly forbidding recursive deletion", async function () {
     await assert.rejects(
       vscode.workspace.fs.delete(createUri('/'), { recursive: false }) as Promise<void>,
-      // 'Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].'
+      /^Error \(FileSystemError\): Fetching the Resource at \[http:\/\/localhost:3010\/example\/\/\] failed: \[404\] \[Not Found\].$/,
+      'Error (FileSystemError): Fetching the Resource at [http://localhost:3010/example//] failed: [404] [Not Found].',
     )
-    });
+  });
   
   test("Reading the root directory", async function () {
     assert.deepEqual(
