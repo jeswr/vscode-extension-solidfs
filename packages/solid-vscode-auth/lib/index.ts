@@ -25,7 +25,7 @@ import * as vscode from "vscode";
 
 export const SOLID_AUTHENTICATION_PROVIDER_ID = "solidauth";
 
-async function buildAuthenticatedFetchFromAccessToken(
+export async function buildAuthenticatedFetchFromAccessToken(
   accessToken: string
 ): Promise<typeof crossFetch> {
   // eslint-disable-next-line camelcase, prefer-const

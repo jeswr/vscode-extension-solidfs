@@ -23,159 +23,291 @@ import * as assert from "assert";
 // You can import and use all API from the 'vscode' module
 // as well as import your extension to test it
 import * as vscode from "vscode";
-import { ActivityBar, ActionsControl } from 'vscode-extension-tester';
 import { SolidAuthenticationProvider } from '../../auth/solidAuthenticationProvider';
-// import * as myExtension from '../../extension';
 import { cssRedirectFactory } from '@jeswr/css-auth-utils';
+import { buildAuthenticatedFetchFromAccessToken } from '@inrupt/solid-vscode-auth'
+import { makeDirectory } from 'solid-bashlib';
+import { getPodRoot } from 'solid-bashlib/dist/utils/util';
+import { v4 } from 'uuid';
 import puppeteer from 'puppeteer';
-import open = require('open');
 
-suite("Extension Test Suite", () => {
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  vscode.window.showInformationMessage("Start all tests.");
+function mockWindow(quickPick: string): typeof vscode.window {
+  return {
+    ...vscode.window,
+    withProgress: (_: any, f: any) => f({ report() { } }, { isCancellationRequested: false }),
+    createOutputChannel: () => { },
+    showInformationMessage: () => { },
+    showQuickPick: () => Promise.resolve(quickPick),
+  } as any
+}
 
-  // await new Promise(res => setTimeout(res, 3000));
+function createAuthenticationProvider(secretData: Record<string, string>) {
+  return new SolidAuthenticationProvider({
+    secrets: {
+      get: async (key: string) => secretData[key],
+      store: async (key: string, value: string) => secretData[key] = value,
+      delete: async (key: string) => delete secretData[key],
+    },
+    extension: { packageJSON: { name: 'VSCode Mock' } },
+  } as any);
+}
 
-  // const login = await vscode.commands.executeCommand("solidauth.login")
 
-  // await new Promise(res => setTimeout(res, 3000));
-
-  // vscode.window.showInformationMessage("Finish all tests.");
-
-
-
-  // test("Log in", async () => {
-  // const session = await vscode.authentication.getSession(
-  //   'solidauth',
-  //   [],
-  //   { createIfNone: true }
-  // );
-  // });
-
-  test("Sample test", async function () {
-    this.timeout(20000)
-    // vscode.window.c
-    // const login = await vscode.commands.executeCommand("solidauth.login")
-    // await new Promise(res => setTimeout(res, 1000));
-
-    // @ts-ignore
-    // vscode.window.showQuickPick = (...args: any[]) => Promise.resolve('http://localhost:3000/')
-
-    // delete vscode.window.showQuickPick;
-    // @ts-ignore
-    // delete vscode.window.showOpenDialog;
-    // @ts-ignore
-    // delete vscode.window.showInputBox;
-    
-    // @ts-ignore
-    // vscode.window = new Proxy(vscode.window, {
-
-    // })
-
-    const progress: vscode.Progress<{
-      message?: string | undefined;
-      increment?: number | undefined;
-  }> = {
-    report() {}
+export function essRedirectFactory(email: string, password: string) {
+  const params = {
+    email: 'input[id=signInFormUsername]',
+    password: 'input[id=signInFormPassword]',
+    submit: 'input[type=Submit]',
+    approve: 'button[form=approve]',
   }
+
+  return async function handleRedirect(url: string) {
+    // Visit the redirect url
+    const browser = await puppeteer.launch({ headless: false, product: 'firefox' });
+
+    // browser.on('d')
+
+    const page = await browser.newPage();
+
+    // page.on('dialog', d => { console.log('dialog', d) });
+    // page.on('popup', d => { console.log('popup', d) });
+    // page.on('load', d => { console.log('load', d) });
+    // page.on('load', d => { console.log('load', d) });
+    
+    await page.goto(url);
+
+    // Fill out the username / password form
+    await page.type(params.email, email);
+    await page.type(params.password, password);
+    await page.click(params.submit);
+
+    // Submit and navigate to the authorise page
+    await page.waitForNavigation();
+
+
+    const events = [
+      "close",
+      "console",
+      "dialog",
+      "domcontentloaded",
+      "error",
+      "frameattached",
+      "framedetached",
+      "framenavigated",
+      "load",
+      "metrics",
+      "pageerror",
+      "popup",
+      "request",
+      "response",
+      "requestfailed",
+      "requestfinished",
+      "requestservedfromcache",
+      "workercreated",
+      "workerdestroyed",
+      ]
+  
+      for (const event of events) {
+        // @ts-ignore
+        page.on(event, d => { console.log(event, d) })
+      }
+  
   
 
-
-    // @ts-ignore
-    vscode.window = {
-      // createOutputChannel: vscode.window.createOutputChannel,
-      // withProgress: vscode.window.withProgress,
-      // @ts-ignore
-      withProgress: (_, f) => f({ report() {} }, { isCancellationRequested: false }),
-      createOutputChannel: () => {},
-      showInformationMessage: () => {},
-      showQuickPick: () => Promise.resolve('http://localhost:3010/'),
+    for (let i = 0; i < 5; i += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        await page.click(params.approve ?? params.submit);
+        // eslint-disable-next-line no-await-in-loop
+        await page.waitForNavigation({ timeout: 1_000 });
+        break;
+      } catch {
+        // Ignore error
+      }
     }
 
-    const openExternal = vscode.env.openExternal
+    // Close the page and browser
+    await page.close();
+    await browser.close();
+  };
+}
 
-    // @ts-ignore
-    vscode.env.openExternal = async (url: vscode.Uri) => {
-  //     console.log(`query [${url.query}]`)
-  //   console.log(`externally opening [${url.toString(true)}]`)
-  //   await open(url.toString(true))
-  //   await new Promise((resolve) => {});
-  //   return;
+suite("Extension Test Suite", () => {
 
-  //  // Visit the redirect url
-  //  const browser = await puppeteer.launch({ headless: false });
-  //  const page = await browser.newPage();
-  //  await page.goto(`${url}`);
-
-  //  // Block at this step
-
-  //  await new Promise((resolve) => {});
-  //  return;
-
-  //  // Fill out the username / password form
-  //  await page.type('input[id=email]', "hello@example.com");
-  //  await page.type('input[name=password]', 'abc123');
-  //  await page.click('button[type=submit]');
-
-  //  // Navigate to the authorise page
-  //  await page.waitForNavigation();
-
-  //  // Click the authorise button
-  //  await page.click('button[type=submit]');
-
-  //  // Navigate to the authorise page
-  //  await page.waitForNavigation();
-
-  //  // Close the page and browser
-  //  await page.close();
-  //  await browser.close();
-
-
-      console.log(`Opening [${url}]`)
-      await cssRedirectFactory("hello@example.com", 'abc123')(url.toString(true));
-      console.log('flow complete')
-      // console.log('open external', url)
+  [
+    // {
+    //   name: "CSS",
+    //   oidcIssuer: 'http://localhost:3010/',
+    //   redirectFactory: cssRedirectFactory('hello@example.com', 'abc123'),
+    //   label: 'example',
+    //   id: 'http://localhost:3010/example/profile/card#me',
+    // },
+    {
+      name: "ESS",
+      oidcIssuer: 'https://login.inrupt.com',
+      redirectFactory: essRedirectFactory('jeswrTest51', 'jeswrTest51'),
+      label: "Jesse Wright 🐨",
+      id: "https://id.inrupt.com/jeswrtest51",
     }
+  ].forEach(data => {
+    suite(`${data.name} suite`, async function () {
+      let secretData: Record<string, string> = {};
+      let authProvider: SolidAuthenticationProvider;
+      let openExternalCount = 0;
+      let windowTemp: typeof vscode.window;
+      let envTemp: typeof vscode.env;
 
-    console.log('pre get session')
+      // Mock some vscode APIs
+      this.beforeAll(() => {
+        // // @ts-ignore
+        // vscode.window.withProgress = (_: any, f: any) => f({ report() { } }, { isCancellationRequested: false });
+        // // @ts-ignore
+        // vscode.window.createOutputChannel = () => { };
+        // // @ts-ignore
+        // vscode.window.showInformationMessage = () => { };
+        // // @ts-ignore
+        // vscode.window.showQuickPick = () => { };
+        // @ts-ignore
+        vscode.window = {
+          ...vscode.window,
+          withProgress: (_: any, f: any) => f({ report() { } }, { isCancellationRequested: false }),
+          createOutputChannel: () => { },
+          showInformationMessage: () => { },
+          showQuickPick: () => Promise.resolve(data.oidcIssuer),
+        };
+        // @ts-ignore
+        vscode.env.openExternal = (url: vscode.Uri) => {
+          openExternalCount += 1;
+          data.redirectFactory(url.toString(true));
+          return true;
+        };
 
-    const secretData: Record<string, string> = {};
+        windowTemp = vscode.window;
+        envTemp = vscode.env;
+      });
+      
+      // Recover the vscode APIs
+      // this.afterAll(() => {
+      //   // @ts-ignore
+      //   vscode.window = windowTemp;
+      //   // @ts-ignore
+      //   vscode.env = envTemp;
+      // });
 
-    const authProvider = new SolidAuthenticationProvider({
-      secrets: {
-        get: async (key: string) => secretData[key],
-        store: async (key: string, value: string) => {
-          // console.log(key, value)
-          try {
-            // console.log(JSON.parse(value))
-          } catch {
-            
-          }
-          secretData[key] = value;
-        },
-        delete:  async (key: string) => delete secretData[key],
-    },
-      extension: { packageJSON: { name: 'VSCode Mock' } },
-    } as any);
+      function create() {
+        authProvider = createAuthenticationProvider(secretData);
+        assert.deepEqual(typeof authProvider, 'object');
+      }
 
-    const sessions = await authProvider.getSessions();
+      function testSessionsDetails(sessions: readonly vscode.AuthenticationSession[]) {
+        assert.deepEqual(sessions.length, 1);
+        assert.deepEqual(sessions[0].account, { label: data.label, id: data.id });
+      }
 
-    assert.deepEqual(sessions, []);
+      function testSessionDetails(info: string) {   
+        test(`[${info}] no scope should have one session`, async function () {
+          this.timeout(10_000);
+          testSessionsDetails(await authProvider.getSessions());
+        });
 
-    const newSession = await authProvider.createSession([]);
+        test(`[${info}] empty scope should have one session`, async function () {
+          this.timeout(10_000);
+          testSessionsDetails(await authProvider.getSessions([]));
+        });
 
-    console.log(newSession)
+        test(`[${info}] correct webId scope should have one session`, async function () {
+          this.timeout(20_000);
+          testSessionsDetails(await authProvider.getSessions([`webId:${data.id}`]));
+        });
 
-    // const session = await vscode.authentication.getSession(
-    //   'solidauth',
-    //   [],
-    //   { createIfNone: true }
-    // );
+        test(`[${info}] incorrect webId scope should have no session`, async function () {
+          assert.deepEqual((await authProvider.getSessions([`webId:http://example.org/nonWebId`])).length, 0);
+        });
 
-    // await new Promise(res => setTimeout(res, 1000));
-    assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-    assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-    vscode.window.showInformationMessage("Finish all tests.");
-    await new Promise(res => setTimeout(res, 1000));
+        test(`[${info}] correct oidcIssuer scope should have one session`, async function () {
+          this.timeout(20_000);
+          testSessionsDetails(await authProvider.getSessions([`oidcIssuer:${data.oidcIssuer}`]));
+        })
+
+        test(`[${info}] incorrect oidcIssuer scope should have no session`, async function () {
+          assert.deepEqual((await authProvider.getSessions([`oidcIssuer:http://example.org/nonOidcIssuer`])).length, 0);
+        });
+
+        test(`[${info}] correct webId and oidcProvider scope should have one session`, async function () {
+          this.timeout(20_000);
+          testSessionsDetails(await authProvider.getSessions([`webId:${data.id}`, `oidcIssuer:${data.oidcIssuer}`]));
+        });
+
+        test(`[${info}] correct webId and incorrect oidcProvider scope should have no session`, async function () {
+          assert.deepEqual((await authProvider.getSessions([`webId:${data.id}`, `oidcIssuer:http://example.org/nonOidcIssuer`])).length, 0);
+        });
+
+        test(`[${info}] incorrect webId and correct oidcProvider scope should have no session`, async function () {
+          assert.deepEqual((await authProvider.getSessions([`webId:http://example.org/nonWebId`, `oidcIssuer:${data.oidcIssuer}`])).length, 0);
+        });
+      }
+
+      async function buildAuthenticatedFetchTest() {
+        // @ts-ignore
+        this.timeout(120_000);
+
+        const [{ account, accessToken }] = await authProvider.getSessions();
+
+        const fetch = await buildAuthenticatedFetchFromAccessToken(accessToken);
+        assert.deepEqual(typeof fetch, 'function');
+  
+        const newContainer = `${await getPodRoot(account.id, fetch)}${v4()}/`;
+        await makeDirectory(newContainer, { fetch });
+        assert.deepEqual((await fetch(newContainer)).status, 200);
+      }
+
+      async function testDisposal() {
+        assert.deepEqual(await authProvider.dispose(), undefined);
+      }
+
+      async function emptySessions() {
+        assert.deepEqual(await authProvider.getSessions(), []);
+      }
+
+      test('Create first authentication provider on empty secret data', create);
+
+      test('#getSessions should return an empty array before any logins', emptySessions);
+
+      test('#createSession should trigger login and create an account', async function () {
+        this.timeout(60_000)
+
+        assert.deepEqual((await authProvider.createSession([])).account, {
+          label: data.label,
+          id: data.id
+        });
+
+        assert.deepEqual(openExternalCount, 1);
+      });
+
+      // testSessionDetails('#getSessions should return the one created session');
+      // test(`the created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
+      // test(`the authentication provider should be disposable`, testDisposal);
+
+      // test(`should be able to create a new authProvider using the existing secrets`, create);
+      // testSessionDetails(`#getSessions should return the same session created by the first auth provider`);
+      // test(`the re-created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
+
+      // test(`testing remove session`, async function () {
+      //   assert.deepEqual(await authProvider.removeAllSessions(), undefined);
+      // });
+
+      // test('#getSessions should return an empty array after session removal', emptySessions);
+      // test('secretData storage should not contain any sessions', function () {
+      //   // Check that there are no sessions hanging around in the secret data
+      //   // assert.deepEqual(Object.keys(secretData), [
+      //   //   '@inrupt/solid-client-authn:solidClientAuthn:registeredSessions',
+      //   //   `@inrupt/solid-client-authn:issuerConfig:${data.oidcIssuer}`
+      //   // ]);
+
+      //   // Check there are no registered sessions in the list
+      //   assert.deepEqual(secretData['@inrupt/solid-client-authn:solidClientAuthn:registeredSessions'], '[]');
+      // });
+      // test(`the new authentication provider should be disposable`, testDisposal);
+    });
   });
 });
