@@ -68,6 +68,10 @@ export function essRedirectFactory(email: string, password: string) {
     // browser.on('d')
 
     const page = await browser.newPage();
+    // await page.setViewport({ width: 1920, height: 1080 });
+
+
+    // console.log('browser targets at start', browser.targets())
 
     // page.on('dialog', d => { console.log('dialog', d) });
     // page.on('popup', d => { console.log('popup', d) });
@@ -81,54 +85,75 @@ export function essRedirectFactory(email: string, password: string) {
     await page.type(params.password, password);
     await page.click(params.submit);
 
+    console.log('a')
+
     // Submit and navigate to the authorise page
     await page.waitForNavigation();
 
+    console.log('b')
 
-    const events = [
-      "close",
-      "console",
-      "dialog",
-      "domcontentloaded",
-      "error",
-      "frameattached",
-      "framedetached",
-      "framenavigated",
-      "load",
-      "metrics",
-      "pageerror",
-      "popup",
-      "request",
-      "response",
-      "requestfailed",
-      "requestfinished",
-      "requestservedfromcache",
-      "workercreated",
-      "workerdestroyed",
-      ]
-  
-      for (const event of events) {
-        // @ts-ignore
-        page.on(event, d => { console.log(event, d) })
-      }
-  
-  
 
-    for (let i = 0; i < 5; i += 1) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await page.click(params.approve ?? params.submit);
-        // eslint-disable-next-line no-await-in-loop
-        await page.waitForNavigation({ timeout: 1_000 });
-        break;
-      } catch {
-        // Ignore error
-      }
+    // const events = [
+    //   "close",
+    //   "console",
+    //   "dialog",
+    //   "domcontentloaded",
+    //   "error",
+    //   "frameattached",
+    //   "framedetached",
+    //   "framenavigated",
+    //   "load",
+    //   "metrics",
+    //   "pageerror",
+    //   "popup",
+    //   "request",
+    //   "response",
+    //   "requestfailed",
+    //   "requestfinished",
+    //   "requestservedfromcache",
+    //   "workercreated",
+    //   "workerdestroyed",
+    //   ]
+  
+    //   for (const event of events) {
+    //     // @ts-ignore
+    //     browser.on(event, d => { console.log(event, d) })
+    //   }
+
+    await page.click(params.approve ?? params.submit);
+
+    // await new Promise(res => setTimeout(res, 60_000));
+
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      await page.waitForNavigation({ timeout: 500 });
+    } catch {
+      // 3 tabs in firefox, 1 tab in chrome
+      console.log('f')
+      await new Promise(res => setTimeout(res, 1000));
+      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 1') });
+      console.log('fg')
+      await new Promise(res => setTimeout(res, 1000));
+      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 2') });
+      console.log('fg1')
+      await new Promise(res => setTimeout(res, 1000));
+      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 3') });
+      console.log('fh')
+      await new Promise(res => setTimeout(res, 1000));
+      page.keyboard.press('Enter').catch(() => { console.log('caught on enter') });
+      // eslint-disable-next-line no-await-in-loop
+      console.log('fh1')
+      await new Promise(res => setTimeout(res, 10_000));
+      await page.waitForNavigation({ timeout: 5_000 }).catch(() => {});
     }
 
-    // Close the page and browser
-    await page.close();
-    await browser.close();
+    try {
+      // Close the page and browser
+      await page.close();
+      await browser.close();
+    } catch {
+      // Suppress close error
+    }
   };
 }
 
