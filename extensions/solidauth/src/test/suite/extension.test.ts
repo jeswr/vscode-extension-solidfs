@@ -24,12 +24,15 @@ import * as assert from "assert";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 import { SolidAuthenticationProvider } from '../../auth/solidAuthenticationProvider';
-import { cssRedirectFactory } from '@jeswr/css-auth-utils';
+import { cssRedirectFactory, essRedirectFactory as _essRedirectFactory } from '@jeswr/css-auth-utils';
 import { buildAuthenticatedFetchFromAccessToken } from '@inrupt/solid-vscode-auth'
 import { makeDirectory } from 'solid-bashlib';
 import { getPodRoot } from 'solid-bashlib/dist/utils/util';
 import { v4 } from 'uuid';
 import puppeteer from 'puppeteer';
+import express = require('express');
+import type { Express } from 'express';
+import { URL } from "url";
 
 function mockWindow(quickPick: string): typeof vscode.window {
   return {
@@ -48,7 +51,7 @@ function createAuthenticationProvider(secretData: Record<string, string>) {
       store: async (key: string, value: string) => secretData[key] = value,
       delete: async (key: string) => delete secretData[key],
     },
-    extension: { packageJSON: { name: 'VSCode Mock' } },
+    extension: { packageJSON: { name: 'VSCode Mock' }, id: 'inrupt.solidAuth' },
   } as any);
 }
 
@@ -62,12 +65,41 @@ export function essRedirectFactory(email: string, password: string) {
   }
 
   return async function handleRedirect(url: string) {
+    const u = new URL(url);
+
+    if (url.includes('redirect_uri=vscode:')) {
+      u.searchParams.set('redirect_uri', 'http://localhost:3125/');
+    }
+
+    console.log(`[${url}] [${u.toString()}]`)
+
+    return _essRedirectFactory(email, password)(u.toString());
+
+
     // Visit the redirect url
-    const browser = await puppeteer.launch({ headless: false, product: 'firefox' });
+    const browser = await puppeteer.launch({ headless: false });
+
+    // const settings = 
 
     // browser.on('d')
 
     const page = await browser.newPage();
+
+    //   await page.setRequestInterception(true);
+
+    //   page.on('request', (request) => {
+    //     console.log('-'.repeat(100), 'request called', request.url())
+    //     if (['image', 'stylesheet', 'font'].indexOf(request.resourceType()) !== -1) {
+    //         request.abort();
+    //     } else {
+    //         request.continue();
+    //     }
+    // });
+
+    // browser.on('')
+    page.on('response', e => { console.log(e.url()) })
+    page.on('request', e => { console.log('request', e.url()); e.continue() })
+
     // await page.setViewport({ width: 1920, height: 1080 });
 
 
@@ -77,7 +109,7 @@ export function essRedirectFactory(email: string, password: string) {
     // page.on('popup', d => { console.log('popup', d) });
     // page.on('load', d => { console.log('load', d) });
     // page.on('load', d => { console.log('load', d) });
-    
+
     await page.goto(url);
 
     // Fill out the username / password form
@@ -114,7 +146,7 @@ export function essRedirectFactory(email: string, password: string) {
     //   "workercreated",
     //   "workerdestroyed",
     //   ]
-  
+
     //   for (const event of events) {
     //     // @ts-ignore
     //     browser.on(event, d => { console.log(event, d) })
@@ -129,13 +161,13 @@ export function essRedirectFactory(email: string, password: string) {
       await page.waitForNavigation({ timeout: 500 });
     } catch {
       // 3 tabs in firefox, 1 tab in chrome
-      console.log('f')
-      await new Promise(res => setTimeout(res, 1000));
-      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 1') });
-      console.log('fg')
-      await new Promise(res => setTimeout(res, 1000));
-      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 2') });
-      console.log('fg1')
+      // console.log('f')
+      // await new Promise(res => setTimeout(res, 1000));
+      // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 1') });
+      // console.log('fg')
+      // await new Promise(res => setTimeout(res, 1000));
+      // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 2') });
+      // console.log('fg1')
       await new Promise(res => setTimeout(res, 1000));
       page.keyboard.press('Tab').catch(() => { console.log('caught on tab 3') });
       console.log('fh')
@@ -144,7 +176,9 @@ export function essRedirectFactory(email: string, password: string) {
       // eslint-disable-next-line no-await-in-loop
       console.log('fh1')
       await new Promise(res => setTimeout(res, 10_000));
-      await page.waitForNavigation({ timeout: 5_000 }).catch(() => {});
+      await page.waitForNavigation({ timeout: 5_000 }).catch(() => { });
+      console.log('attempted to wait for navigation')
+      await new Promise(res => setTimeout(res, 100_000));
     }
 
     try {
@@ -181,6 +215,7 @@ suite("Extension Test Suite", () => {
       let openExternalCount = 0;
       let windowTemp: typeof vscode.window;
       let envTemp: typeof vscode.env;
+      let app: Express
 
       // Mock some vscode APIs
       this.beforeAll(() => {
@@ -207,10 +242,28 @@ suite("Extension Test Suite", () => {
           return true;
         };
 
+        const handlers: vscode.UriHandler[] = [];
+
+        // Create an express app to handle incoming redirects
+        app = express();
+        app.get('/', async (req, res) => {
+          for (const handler of handlers) {
+            handler.handleUri(vscode.Uri.parse(req.url))
+          }
+
+          return res.send();
+        });
+        app.listen(3125);
+
+        // @ts-ignore
+        vscode.window.registerUriHandler = (handler) => {
+          handlers.push(handler);
+        }
+
         windowTemp = vscode.window;
         envTemp = vscode.env;
       });
-      
+
       // Recover the vscode APIs
       // this.afterAll(() => {
       //   // @ts-ignore
@@ -229,7 +282,7 @@ suite("Extension Test Suite", () => {
         assert.deepEqual(sessions[0].account, { label: data.label, id: data.id });
       }
 
-      function testSessionDetails(info: string) {   
+      function testSessionDetails(info: string) {
         test(`[${info}] no scope should have one session`, async function () {
           this.timeout(10_000);
           testSessionsDetails(await authProvider.getSessions());
@@ -280,7 +333,7 @@ suite("Extension Test Suite", () => {
 
         const fetch = await buildAuthenticatedFetchFromAccessToken(accessToken);
         assert.deepEqual(typeof fetch, 'function');
-  
+
         const newContainer = `${await getPodRoot(account.id, fetch)}${v4()}/`;
         await makeDirectory(newContainer, { fetch });
         assert.deepEqual((await fetch(newContainer)).status, 200);
@@ -299,7 +352,7 @@ suite("Extension Test Suite", () => {
       test('#getSessions should return an empty array before any logins', emptySessions);
 
       test('#createSession should trigger login and create an account', async function () {
-        this.timeout(60_000)
+        this.timeout(120_000)
 
         assert.deepEqual((await authProvider.createSession([])).account, {
           label: data.label,

@@ -508,7 +508,7 @@ export class SolidAuthenticationProvider
           const uri = await new Promise<string>((resolve) => {
             const disposable = vscode.window.registerUriHandler({
               handleUri: (uriToHandle: vscode.Uri) => {
-                console.log('handling uri')
+                console.log(`handling uri [${uriToHandle.toString(true)}]`)
                 // Close the URI handler as soon as the redirect has
                 // taken place
                 disposable.dispose();
