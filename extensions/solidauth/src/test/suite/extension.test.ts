@@ -24,7 +24,8 @@ import * as assert from "assert";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 import { SolidAuthenticationProvider } from '../../auth/solidAuthenticationProvider';
-import { cssRedirectFactory, essRedirectFactory as _essRedirectFactory } from '@jeswr/css-auth-utils';
+import { essRedirectFactory } from './essRedirectFactory';
+import { cssRedirectFactory } from '@jeswr/css-auth-utils';
 import { buildAuthenticatedFetchFromAccessToken } from '@inrupt/solid-vscode-auth'
 import { makeDirectory } from 'solid-bashlib';
 import { getPodRoot } from 'solid-bashlib/dist/utils/util';
@@ -56,151 +57,154 @@ function createAuthenticationProvider(secretData: Record<string, string>) {
 }
 
 
-export function essRedirectFactory(email: string, password: string) {
-  const params = {
-    email: 'input[id=signInFormUsername]',
-    password: 'input[id=signInFormPassword]',
-    submit: 'input[type=Submit]',
-    approve: 'button[form=approve]',
-  }
+// export function essRedirectFactory(email: string, password: string) {
+//   const params = {
+//     email: 'input[id=signInFormUsername]',
+//     password: 'input[id=signInFormPassword]',
+//     submit: 'input[type=Submit]',
+//     approve: 'button[form=approve]',
+//   }
 
-  return async function handleRedirect(url: string) {
-    const u = new URL(url);
+//   return async function handleRedirect(url: string) {
+//     const u = new URL(url);
 
-    if (url.includes('redirect_uri=vscode:')) {
-      u.searchParams.set('redirect_uri', 'http://localhost:3125/');
-    }
+//     console.log(`[${url}]`)
 
-    console.log(`[${url}] [${u.toString()}]`)
+//     if (url.includes('redirect_uri=vscode:')) {
+//       u.searchParams.delete('redirect_uri');
+//       url = `${u.toString()}&redirect_uri=http://localhost:3125/redirect`
+//     }
 
-    return _essRedirectFactory(email, password)(u.toString());
+//     console.log(`[${url}] [${u.toString()}]`)
 
-
-    // Visit the redirect url
-    const browser = await puppeteer.launch({ headless: false });
-
-    // const settings = 
-
-    // browser.on('d')
-
-    const page = await browser.newPage();
-
-    //   await page.setRequestInterception(true);
-
-    //   page.on('request', (request) => {
-    //     console.log('-'.repeat(100), 'request called', request.url())
-    //     if (['image', 'stylesheet', 'font'].indexOf(request.resourceType()) !== -1) {
-    //         request.abort();
-    //     } else {
-    //         request.continue();
-    //     }
-    // });
-
-    // browser.on('')
-    page.on('response', e => { console.log(e.url()) })
-    page.on('request', e => { console.log('request', e.url()); e.continue() })
-
-    // await page.setViewport({ width: 1920, height: 1080 });
+//     return _essRedirectFactory(email, password)(url);
 
 
-    // console.log('browser targets at start', browser.targets())
+//     // Visit the redirect url
+//     const browser = await puppeteer.launch({ headless: false });
 
-    // page.on('dialog', d => { console.log('dialog', d) });
-    // page.on('popup', d => { console.log('popup', d) });
-    // page.on('load', d => { console.log('load', d) });
-    // page.on('load', d => { console.log('load', d) });
+//     // const settings = 
 
-    await page.goto(url);
+//     // browser.on('d')
 
-    // Fill out the username / password form
-    await page.type(params.email, email);
-    await page.type(params.password, password);
-    await page.click(params.submit);
+//     const page = await browser.newPage();
 
-    console.log('a')
+//     //   await page.setRequestInterception(true);
 
-    // Submit and navigate to the authorise page
-    await page.waitForNavigation();
+//     //   page.on('request', (request) => {
+//     //     console.log('-'.repeat(100), 'request called', request.url())
+//     //     if (['image', 'stylesheet', 'font'].indexOf(request.resourceType()) !== -1) {
+//     //         request.abort();
+//     //     } else {
+//     //         request.continue();
+//     //     }
+//     // });
 
-    console.log('b')
+//     // browser.on('')
+//     page.on('response', e => { console.log(e.url()) })
+//     page.on('request', e => { console.log('request', e.url()); e.continue() })
+
+//     // await page.setViewport({ width: 1920, height: 1080 });
 
 
-    // const events = [
-    //   "close",
-    //   "console",
-    //   "dialog",
-    //   "domcontentloaded",
-    //   "error",
-    //   "frameattached",
-    //   "framedetached",
-    //   "framenavigated",
-    //   "load",
-    //   "metrics",
-    //   "pageerror",
-    //   "popup",
-    //   "request",
-    //   "response",
-    //   "requestfailed",
-    //   "requestfinished",
-    //   "requestservedfromcache",
-    //   "workercreated",
-    //   "workerdestroyed",
-    //   ]
+//     // console.log('browser targets at start', browser.targets())
 
-    //   for (const event of events) {
-    //     // @ts-ignore
-    //     browser.on(event, d => { console.log(event, d) })
-    //   }
+//     // page.on('dialog', d => { console.log('dialog', d) });
+//     // page.on('popup', d => { console.log('popup', d) });
+//     // page.on('load', d => { console.log('load', d) });
+//     // page.on('load', d => { console.log('load', d) });
 
-    await page.click(params.approve ?? params.submit);
+//     await page.goto(url);
 
-    // await new Promise(res => setTimeout(res, 60_000));
+//     // Fill out the username / password form
+//     await page.type(params.email, email);
+//     await page.type(params.password, password);
+//     await page.click(params.submit);
 
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      await page.waitForNavigation({ timeout: 500 });
-    } catch {
-      // 3 tabs in firefox, 1 tab in chrome
-      // console.log('f')
-      // await new Promise(res => setTimeout(res, 1000));
-      // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 1') });
-      // console.log('fg')
-      // await new Promise(res => setTimeout(res, 1000));
-      // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 2') });
-      // console.log('fg1')
-      await new Promise(res => setTimeout(res, 1000));
-      page.keyboard.press('Tab').catch(() => { console.log('caught on tab 3') });
-      console.log('fh')
-      await new Promise(res => setTimeout(res, 1000));
-      page.keyboard.press('Enter').catch(() => { console.log('caught on enter') });
-      // eslint-disable-next-line no-await-in-loop
-      console.log('fh1')
-      await new Promise(res => setTimeout(res, 10_000));
-      await page.waitForNavigation({ timeout: 5_000 }).catch(() => { });
-      console.log('attempted to wait for navigation')
-      await new Promise(res => setTimeout(res, 100_000));
-    }
+//     console.log('a')
 
-    try {
-      // Close the page and browser
-      await page.close();
-      await browser.close();
-    } catch {
-      // Suppress close error
-    }
-  };
-}
+//     // Submit and navigate to the authorise page
+//     await page.waitForNavigation();
+
+//     console.log('b')
+
+
+//     // const events = [
+//     //   "close",
+//     //   "console",
+//     //   "dialog",
+//     //   "domcontentloaded",
+//     //   "error",
+//     //   "frameattached",
+//     //   "framedetached",
+//     //   "framenavigated",
+//     //   "load",
+//     //   "metrics",
+//     //   "pageerror",
+//     //   "popup",
+//     //   "request",
+//     //   "response",
+//     //   "requestfailed",
+//     //   "requestfinished",
+//     //   "requestservedfromcache",
+//     //   "workercreated",
+//     //   "workerdestroyed",
+//     //   ]
+
+//     //   for (const event of events) {
+//     //     // @ts-ignore
+//     //     browser.on(event, d => { console.log(event, d) })
+//     //   }
+
+//     await page.click(params.approve ?? params.submit);
+
+//     // await new Promise(res => setTimeout(res, 60_000));
+
+//     try {
+//       // eslint-disable-next-line no-await-in-loop
+//       await page.waitForNavigation({ timeout: 500 });
+//     } catch {
+//       // 3 tabs in firefox, 1 tab in chrome
+//       // console.log('f')
+//       // await new Promise(res => setTimeout(res, 1000));
+//       // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 1') });
+//       // console.log('fg')
+//       // await new Promise(res => setTimeout(res, 1000));
+//       // page.keyboard.press('Tab').catch(() => { console.log('caught on tab 2') });
+//       // console.log('fg1')
+//       await new Promise(res => setTimeout(res, 1000));
+//       page.keyboard.press('Tab').catch(() => { console.log('caught on tab 3') });
+//       console.log('fh')
+//       await new Promise(res => setTimeout(res, 1000));
+//       page.keyboard.press('Enter').catch(() => { console.log('caught on enter') });
+//       // eslint-disable-next-line no-await-in-loop
+//       console.log('fh1')
+//       await new Promise(res => setTimeout(res, 10_000));
+//       await page.waitForNavigation({ timeout: 5_000 }).catch(() => { });
+//       console.log('attempted to wait for navigation')
+//       await new Promise(res => setTimeout(res, 100_000));
+//     }
+
+//     try {
+//       // Close the page and browser
+//       await page.close();
+//       await browser.close();
+//     } catch {
+//       // Suppress close error
+//     }
+//   };
+// }
 
 suite("Extension Test Suite", () => {
 
   [
-    // {
-    //   name: "CSS",
-    //   oidcIssuer: 'http://localhost:3010/',
-    //   redirectFactory: cssRedirectFactory('hello@example.com', 'abc123'),
-    //   label: 'example',
-    //   id: 'http://localhost:3010/example/profile/card#me',
-    // },
+    {
+      name: "CSS",
+      oidcIssuer: 'http://localhost:3010/',
+      redirectFactory: cssRedirectFactory('hello@example.com', 'abc123'),
+      label: 'example',
+      id: 'http://localhost:3010/example/profile/card#me',
+    },
     {
       name: "ESS",
       oidcIssuer: 'https://login.inrupt.com',
@@ -235,29 +239,31 @@ suite("Extension Test Suite", () => {
           showInformationMessage: () => { },
           showQuickPick: () => Promise.resolve(data.oidcIssuer),
         };
-        // @ts-ignore
-        vscode.env.openExternal = (url: vscode.Uri) => {
-          openExternalCount += 1;
-          data.redirectFactory(url.toString(true));
-          return true;
-        };
 
         const handlers: vscode.UriHandler[] = [];
 
-        // Create an express app to handle incoming redirects
-        app = express();
-        app.get('/', async (req, res) => {
-          for (const handler of handlers) {
-            handler.handleUri(vscode.Uri.parse(req.url))
-          }
-
-          return res.send();
-        });
-        app.listen(3125);
+        // @ts-ignore
+        vscode.env.openExternal = (url: vscode.Uri) => {
+          openExternalCount += 1;
+          data.redirectFactory(url.toString(true)).then(res => {
+            // Mocking redirects back to the vscode URI
+            if (typeof res === 'string') {
+              for (const handler of handlers) {
+                handler.handleUri(vscode.Uri.parse(res));
+              }
+            }
+          });
+          return true;
+        };
 
         // @ts-ignore
-        vscode.window.registerUriHandler = (handler) => {
+        vscode.window.registerUriHandler = function (handler: vscode.UriHandler) {
           handlers.push(handler);
+          return {
+            dispose() {
+              handlers.filter(h => h !== handler);
+            }
+          }
         }
 
         windowTemp = vscode.window;
@@ -362,30 +368,30 @@ suite("Extension Test Suite", () => {
         assert.deepEqual(openExternalCount, 1);
       });
 
-      // testSessionDetails('#getSessions should return the one created session');
-      // test(`the created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
-      // test(`the authentication provider should be disposable`, testDisposal);
+      testSessionDetails('#getSessions should return the one created session');
+      test(`the created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
+      test(`the authentication provider should be disposable`, testDisposal);
 
-      // test(`should be able to create a new authProvider using the existing secrets`, create);
-      // testSessionDetails(`#getSessions should return the same session created by the first auth provider`);
-      // test(`the re-created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
+      test(`should be able to create a new authProvider using the existing secrets`, create);
+      testSessionDetails(`#getSessions should return the same session created by the first auth provider`);
+      test(`the re-created session should have a token to build an authenticated fetch`, buildAuthenticatedFetchTest);
 
-      // test(`testing remove session`, async function () {
-      //   assert.deepEqual(await authProvider.removeAllSessions(), undefined);
-      // });
+      test(`testing remove session`, async function () {
+        assert.deepEqual(await authProvider.removeAllSessions(), undefined);
+      });
 
-      // test('#getSessions should return an empty array after session removal', emptySessions);
-      // test('secretData storage should not contain any sessions', function () {
-      //   // Check that there are no sessions hanging around in the secret data
-      //   // assert.deepEqual(Object.keys(secretData), [
-      //   //   '@inrupt/solid-client-authn:solidClientAuthn:registeredSessions',
-      //   //   `@inrupt/solid-client-authn:issuerConfig:${data.oidcIssuer}`
-      //   // ]);
+      test('#getSessions should return an empty array after session removal', emptySessions);
+      test('secretData storage should not contain any sessions', function () {
+        // Check that there are no sessions hanging around in the secret data
+        // assert.deepEqual(Object.keys(secretData), [
+        //   '@inrupt/solid-client-authn:solidClientAuthn:registeredSessions',
+        //   `@inrupt/solid-client-authn:issuerConfig:${data.oidcIssuer}`
+        // ]);
 
-      //   // Check there are no registered sessions in the list
-      //   assert.deepEqual(secretData['@inrupt/solid-client-authn:solidClientAuthn:registeredSessions'], '[]');
-      // });
-      // test(`the new authentication provider should be disposable`, testDisposal);
+        // Check there are no registered sessions in the list
+        assert.deepEqual(secretData['@inrupt/solid-client-authn:solidClientAuthn:registeredSessions'], '[]');
+      });
+      test(`the new authentication provider should be disposable`, testDisposal);
     });
   });
 });
