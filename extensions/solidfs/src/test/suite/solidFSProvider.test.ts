@@ -5,7 +5,7 @@ import { afterEach, beforeEach } from "mocha";
 import * as vscode from "vscode";
 import { getAuthenticatedFetch } from "@jeswr/css-auth-utils";
 import * as assert from "assert";
-import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
+import type { VscodeSolidSession } from "@jeswr/solid-vscode-auth";
 import { SolidFS } from "../../solidFS";
 
 const scheme = "solidfsTestRegistration";

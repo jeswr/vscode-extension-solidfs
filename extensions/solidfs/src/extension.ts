@@ -1,6 +1,6 @@
 import { QueryEngine } from "@comunica/query-sparql-solid";
 import * as vscode from "vscode";
-import { getSolidFetch } from "@inrupt/solid-vscode-auth";
+import { getSolidFetch } from "@jeswr/solid-vscode-auth";
 import md5 = require("md5");
 import LinkHeader = require("http-link-header");
 import { SolidFS } from "./solidFS";

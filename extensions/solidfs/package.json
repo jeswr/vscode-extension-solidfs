@@ -1,19 +1,18 @@
 {
   "name": "solidfs",
-  "publisher": "inrupt",
+  "publisher": "jeswr",
   "displayName": "solidFS",
   "description": "View your Solid Pod as a local File System",
   "version": "0.0.1",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
+    "url": "https://github.com/jeswr/vscode-extension-solidfs.git"
   },
   "bugs": {
-    "email": "support@inrupt.com",
-    "url": "https://github.com/inrupt/vscode-extension-solidfs/issues"
+    "url": "https://github.com/jeswr/vscode-extension-solidfs/issues"
   },
-  "homepage": "https://github.com/microsoft/vscode-wordcount/blob/main/solidfs/README.md",
+  "homepage": "https://github.com/jeswr/vscode-extension-solidfs/blob/main/extensions/solidfs/README.md",
   "galleryBanner": {
     "color": "#7c4dff",
     "theme": "dark"
@@ -23,17 +22,13 @@
     "workspace"
   ],
   "extensionDependencies": [
-    "inrupt.solidauth"
+    "jeswr.solidauth"
   ],
   "engines": {
     "vscode": "^1.73.0"
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onCommand:solidfs.open",
-    "onCommand:solidfs.clear"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -75,7 +70,7 @@
     "@inrupt/solid-client": "^1.25.0",
     "@inrupt/solid-client-authn-node": "1.13.0",
     "@inrupt/solid-client-notifications": "^1.1.1",
-    "@inrupt/solid-vscode-auth": "^0.0.0",
+    "@jeswr/solid-vscode-auth": "^0.0.0",
     "@rdfjs/types": "^1.1.0",
     "http-link-header": "^1.1.0",
     "jsonld-streaming-parser": "^3.1.0",

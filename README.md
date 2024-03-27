@@ -52,7 +52,7 @@ then run `fn`+`F5` to open the extension development environment.
 To quickly get started testing the solidfs extension run the following commands:
 
 ```shell
-gh repo clone inrupt/vscode-extension-solidfs
+gh repo clone jeswr/vscode-extension-solidfs
 cd ./vscode-extension-solidfs
 npm install
 npm run build
@@ -66,7 +66,7 @@ and then press `fn`+`F5` in the new vscode window that is opened.
 _or_
 
 ```shell
-gh repo clone inrupt/vscode-extension-solidfs
+gh repo clone jeswr/vscode-extension-solidfs
 cd ./vscode-extension-solidfs
 npm run predev:solidfs
 ```

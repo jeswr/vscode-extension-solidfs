@@ -2,12 +2,12 @@
 
 Provides Authentication for the Solid Ecosystem.
 
-## Using the authentication provider `@inrupt/solid-vscode-auth`
+## Using the authentication provider `@jeswr/solid-vscode-auth`
 
-We currently recommend using `@inrupt/solid-vscode-auth` to get a solid authentication session and build a fetch function. It's usage is as follows:
+We currently recommend using `@jeswr/solid-vscode-auth` to get a solid authentication session and build a fetch function. It's usage is as follows:
 
 ```ts
-import { getSolidFetch } from "@inrupt/solid-vscode-auth";
+import { getSolidFetch } from "@jeswr/solid-vscode-auth";
 import { getSolidDataset } from "@inrupt/solid-client";
 
 function loginAndFetch() {
@@ -34,11 +34,11 @@ vscode.window.showInformationMessage(`Welcome ${session.account.label}`);
 
 ## Requirements
 
-To use this extension make sure to add `inrupt.solidauth` to your extension dependencies in the extension you are building; this can be done by adding the following to the package.json
+To use this extension make sure to add `jeswr.solidauth` to your extension dependencies in the extension you are building; this can be done by adding the following to the package.json
 
 ```ts
 "extensionDependencies": [
-  "inrupt.solidauth"
+  "jeswr.solidauth"
 ],
 ```
 

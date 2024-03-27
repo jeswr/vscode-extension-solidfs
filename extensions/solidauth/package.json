@@ -1,19 +1,18 @@
 {
   "name": "solidauth",
-  "publisher": "inrupt",
+  "publisher": "jeswr",
   "displayName": "solidAuth",
   "description": "An Authentication Provider for the Solid Ecosystem",
   "version": "0.0.1",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/inrupt/vscode-extension-solidfs.git"
+    "url": "https://github.com/jeswr/vscode-extension-solidfs.git"
   },
   "bugs": {
-    "email": "support@inrupt.com",
-    "url": "https://github.com/inrupt/vscode-extension-solidfs/issues"
+    "url": "https://github.com/jeswr/vscode-extension-solidfs/issues"
   },
-  "homepage": "https://github.com/microsoft/vscode-wordcount/blob/main/solidauth/README.md",
+  "homepage": "https://github.com/jeswr/vscode-extension-solidfs/blob/main/extensions/solidauth/README.md",
   "engines": {
     "vscode": "^1.73.0"
   },
@@ -23,11 +22,6 @@
   ],
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onCommand:solidauth.login",
-    "onCommand:solidauth.logout",
-    "onAuthenticationRequest:solidauth"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -52,7 +46,7 @@
   },
   "scripts": {
     "solidauth:global:install": "code --install-extension ./solidauth-$npm_package_version.vsix",
-    "solidauth:global:uninstall": "code --uninstall-extension inrupt.solidauth",
+    "solidauth:global:uninstall": "code --uninstall-extension jeswr.solidauth",
     "licenses:check": "license-checker --out license.csv --failOn --development \"AGPL-1.0-only; AGPL-1.0-or-later; AGPL-3.0-only; AGPL-3.0-or-later; Beerware; CC-BY-NC-1.0; CC-BY-NC-2.0; CC-BY-NC-2.5; CC-BY-NC-3.0; CC-BY-NC-4.0; CC-BY-NC-ND-1.0; CC-BY-NC-ND-2.0; CC-BY-NC-ND-2.5; CC-BY-NC-ND-3.0; CC-BY-NC-ND-4.0; CC-BY-NC-SA-1.0; CC-BY-NC-SA-2.0; CC-BY-NC-SA-2.5; CC-BY-NC-SA-3.0; CC-BY-NC-SA-4.0; CPAL-1.0; EUPL-1.0; EUPL-1.1; EUPL-1.1;  GPL-1.0-only; GPL-1.0-or-later; GPL-2.0-only;  GPL-2.0-or-later; GPL-3.0; GPL-3.0-only; GPL-3.0-or-later; SISSL;  SISSL-1.2; WTFPL\"",
     "vscode:prepublish": "npm run package:webpack",
     "compile": "webpack",
@@ -71,7 +65,7 @@
     "@inrupt/solid-client": "^1.25.0",
     "@inrupt/solid-client-authn-core": "1.13.0",
     "@inrupt/solid-client-authn-node": "1.13.0",
-    "@inrupt/solid-vscode-auth": "^0.0.0",
+    "@jeswr/solid-vscode-auth": "^0.0.0",
     "solid-node-interactive-auth": "1.1.1"
   }
 }

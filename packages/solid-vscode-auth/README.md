@@ -1,4 +1,4 @@
-# `@inrupt/solid-vscode-auth`
+# `@jeswr/solid-vscode-auth`
 
 This is a _temporary package_ to help log into a Solid Pod provider with the vscode AuthenticationProvider API.
 This package will be depricated a once the core Inrupt authn libraries expose the required low-level functionality
@@ -7,7 +7,7 @@ to achieve this.
 ## Usage
 
 ```ts
-import { getSolidFetch } from "@inrupt/solid-vscode-auth";
+import { getSolidFetch } from "@jeswr/solid-vscode-auth";
 import { getSolidDataset } from "@inrupt/solid-client";
 
 function loginAndFetch() {

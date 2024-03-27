@@ -5,7 +5,7 @@ import {
   getSessionIdFromStorageAll,
   getSessionFromStorage,
 } from "@inrupt/solid-client-authn-node";
-import { SOLID_AUTHENTICATION_PROVIDER_ID } from "@inrupt/solid-vscode-auth";
+import { SOLID_AUTHENTICATION_PROVIDER_ID } from "@jeswr/solid-vscode-auth";
 
 import { interactiveLogin } from "solid-node-interactive-auth";
 import { v4 } from "uuid";

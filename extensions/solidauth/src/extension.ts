@@ -1,4 +1,4 @@
-import { getSolidFetch } from "@inrupt/solid-vscode-auth";
+import { getSolidFetch } from "@jeswr/solid-vscode-auth";
 import * as vscode from "vscode";
 import { SolidAuthenticationProvider } from "./auth";
 

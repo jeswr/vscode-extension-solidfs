@@ -2,7 +2,7 @@ import type { Bindings } from "@rdfjs/types";
 import { DataFactory as DF, Store } from "n3";
 import * as vscode from "vscode";
 import { overwriteFile } from "@inrupt/solid-client";
-import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
+import type { VscodeSolidSession } from "@jeswr/solid-vscode-auth";
 import type { Logger } from "solid-bashlib";
 import { copy, list, makeDirectory, remove } from "solid-bashlib";
 import type { NotificationOptions as INotificationOptions } from "@inrupt/solid-client-notifications";

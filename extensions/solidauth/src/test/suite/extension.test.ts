@@ -4,7 +4,7 @@ import * as assert from "assert";
 // as well as import your extension to test it
 import * as vscode from "vscode";
 import { cssRedirectFactory } from "@jeswr/css-auth-utils";
-import { buildAuthenticatedFetchFromAccessToken } from "@inrupt/solid-vscode-auth";
+import { buildAuthenticatedFetchFromAccessToken } from "@jeswr/solid-vscode-auth";
 import { makeDirectory } from "solid-bashlib";
 import { getPodRoot } from "solid-bashlib/dist/utils/util";
 import { v4 } from "uuid";
@@ -31,7 +31,7 @@ function createAuthenticationProvider(secretData: Record<string, string>) {
       store: async (key: string, value: string) => (secretData[key] = value),
       delete: async (key: string) => delete secretData[key],
     },
-    extension: { packageJSON: { name: "VSCode Mock" }, id: "inrupt.solidAuth" },
+    extension: { packageJSON: { name: "VSCode Mock" }, id: "jeswr.solidauth" },
   } as any);
 }
 

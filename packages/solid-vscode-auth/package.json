@@ -1,5 +1,5 @@
 {
-  "name": "@inrupt/solid-vscode-auth",
+  "name": "@jeswr/solid-vscode-auth",
   "version": "0.0.0",
   "private": true,
   "description": "Utilities to interact with Solid authentication session from the vscode AuthenticationProvider API",
