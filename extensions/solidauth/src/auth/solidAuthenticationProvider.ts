@@ -338,7 +338,6 @@ export class SolidAuthenticationProvider
       // Make sure the sessions are resolved
       // eslint-disable-next-line no-await-in-loop
       await this.sessions;
-
     } while (toRefresh.length > 0);
 
     this.runningRefresh = false;
@@ -508,7 +507,7 @@ export class SolidAuthenticationProvider
           const uri = await new Promise<string>((resolve) => {
             const disposable = vscode.window.registerUriHandler({
               handleUri: (uriToHandle: vscode.Uri) => {
-                console.log(`handling uri [${uriToHandle.toString(true)}]`)
+                console.log(`handling uri [${uriToHandle.toString(true)}]`);
                 // Close the URI handler as soon as the redirect has
                 // taken place
                 disposable.dispose();
@@ -589,7 +588,10 @@ export class SolidAuthenticationProvider
         // });
         // });
 
-        const authsession = await toAuthenticationSession(session, this.storage);
+        const authsession = await toAuthenticationSession(
+          session,
+          this.storage
+        );
 
         return authsession;
       }

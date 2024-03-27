@@ -18,35 +18,29 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-import { chromium } from "playwright";
+import type { NotificationOptions } from "@inrupt/solid-client-notifications";
+import { WebsocketNotification } from "@inrupt/solid-client-notifications";
 
-export function essRedirectFactory(username: string, password: string) {
-  return async function handleRedirect(url: string) {
-    // Visit the redirect url
-    const browser = await chromium.launch();
-    const page = await browser.newPage();
-    await page.goto(url);
-    await page.waitForURL(/https:\/\/auth.inrupt.com\/.*/);
-    await page.getByRole("textbox", { name: "Username" }).fill(username);
-    await page.getByRole("textbox", { name: "Password" }).fill(password);
+export class DisposableWebsocketNotification {
+  private socket: Promise<WebsocketNotification>;
 
-    const button = page.getByRole("button", { name: "Submit" });
-    await button.hover();
-    await button.click();
+  constructor(topic: Promise<string>, options?: NotificationOptions) {
+    this.socket = topic.then((t) => new WebsocketNotification(t, options));
+  }
 
-    const returnUrl = await new Promise(async (res) => {
-      page.on("request", (r) => {
-        if (r.url().startsWith("vscode")) {
-          res(r.url());
-        }
-      });
+  on(messageEvent: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.on(messageEvent, listener));
+  }
 
-      await page.click("button[form=approve]");
-    });
+  off(notificationEvent: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.off(notificationEvent, listener));
+  }
 
-    await page.close();
-    await browser.close();
+  disconnect() {
+    this.socket.then((socket) => socket.disconnect());
+  }
 
-    return returnUrl;
-  };
+  dispose() {
+    this.disconnect();
+  }
 }

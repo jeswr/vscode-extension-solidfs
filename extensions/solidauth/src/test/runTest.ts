@@ -21,14 +21,22 @@
 import * as path from "path";
 
 import { runTests } from "@vscode/test-electron";
-import { createApp } from '@jeswr/css-init-utils';
+import { createApp } from "@jeswr/css-init-utils";
 
 async function main() {
   try {
     const app = await createApp({
       port: 3_010,
-      loggingLevel: 'off',
-      seededPodConfigJson: path.join(__dirname, '..', '..', 'src', 'test', 'configs', 'solid-css-seed.json'),
+      loggingLevel: "off",
+      seededPodConfigJson: path.join(
+        __dirname,
+        "..",
+        "..",
+        "src",
+        "test",
+        "configs",
+        "solid-css-seed.json"
+      ),
     });
 
     await app.start();

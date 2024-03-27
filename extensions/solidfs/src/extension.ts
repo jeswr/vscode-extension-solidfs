@@ -74,7 +74,11 @@ function initFileSystem(context: vscode.ExtensionContext, engine: QueryEngine) {
         context.subscriptions.push(
           vscode.workspace.registerFileSystemProvider(
             `solidfs-${md5(webId)}-${md5(root)}`,
-            new SolidFS({ session, root, all: !!context.workspaceState.get("solidfs:showMetadata") }),
+            new SolidFS({
+              session,
+              root,
+              all: !!context.workspaceState.get("solidfs:showMetadata"),
+            }),
             // URLs are case sensitive
             { isCaseSensitive: true }
           )
@@ -162,14 +166,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
           progress.report({ message: "preparing workspace" });
 
-          await context.workspaceState.update('solidfs', { [webId]: roots });
+          await context.workspaceState.update("solidfs", { [webId]: roots });
 
           for (const podRoot of roots) {
             try {
               context.subscriptions.push(
                 vscode.workspace.registerFileSystemProvider(
                   `solidfs-${md5(webId)}-${md5(podRoot)}`,
-                  new SolidFS({ session, root: podRoot, all: !!context.workspaceState.get("solidfs:showMetadata") }),
+                  new SolidFS({
+                    session,
+                    root: podRoot,
+                    all: !!context.workspaceState.get("solidfs:showMetadata"),
+                  }),
                   { isCaseSensitive: true }
                 )
               );
@@ -216,7 +224,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("solidfs.toggleMetadata", async () => {
       const showMetadata = !context.workspaceState.get("solidfs:showMetadata");
 
-      vscode.window.showInformationMessage(`Metadata view ${showMetadata ? 'enabled' : 'disabled'}`);
+      vscode.window.showInformationMessage(
+        `Metadata view ${showMetadata ? "enabled" : "disabled"}`
+      );
 
       await context.workspaceState.update("solidfs:showMetadata", showMetadata);
 

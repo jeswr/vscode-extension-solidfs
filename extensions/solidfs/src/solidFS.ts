@@ -18,16 +18,16 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-import type { QueryEngine } from "@comunica/query-sparql-solid";
 import type { Bindings } from "@rdfjs/types";
 import { DataFactory as DF, Store } from "n3";
 import * as vscode from "vscode";
 import { overwriteFile } from "@inrupt/solid-client";
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
-import { copy, list, makeDirectory, remove, Logger } from "solid-bashlib";
-import type { NotificationOptions } from "@inrupt/solid-client-notifications";
-import { WebsocketNotification } from "@inrupt/solid-client-notifications";
+import type { Logger } from "solid-bashlib";
+import { copy, list, makeDirectory, remove } from "solid-bashlib";
+import type { NotificationOptions as INotificationOptions } from "@inrupt/solid-client-notifications";
 import { JsonLdParser } from "jsonld-streaming-parser";
+import { DisposableWebsocketNotification } from "./DisposableWebsocketNotification";
 
 // class DisposableWebsocketNotification extends WebsocketNotification {
 //   dispose() {
@@ -36,39 +36,15 @@ import { JsonLdParser } from "jsonld-streaming-parser";
 // }
 
 const errorLogger: Logger = {
-  log(...msg) {
-    
-  },
+  // FIXME: This is not the correct way to handle errors
+  // eslint-disable-next-line
+  log(...msg) {},
   error(...msg) {
-    throw new Error(msg.join(', '));
+    throw new Error(msg.join(", "));
   },
-}
+};
 
-class DisposableWebsocketNotification {
-  private socket: Promise<WebsocketNotification>;
-
-  constructor(topic: Promise<string>, options?: NotificationOptions) {
-    this.socket = topic.then((t) => new WebsocketNotification(t, options));
-  }
-
-  on(event: "message", listener: (notification: object) => void) {
-    this.socket.then((socket) => socket.on(event, listener));
-  }
-
-  off(event: "message", listener: (notification: object) => void) {
-    this.socket.then((socket) => socket.off(event, listener));
-  }
-
-  disconnect() {
-    this.socket.then((socket) => socket.disconnect());
-  }
-
-  dispose() {
-    this.disconnect();
-  }
-}
-
-interface WatchNotificationOptions extends NotificationOptions {
+interface WatchNotificationOptions extends INotificationOptions {
   listener: (notification: object) => void;
 }
 
@@ -121,12 +97,12 @@ export class SolidFS implements vscode.FileSystemProvider {
 
   private stats: Record<string, boolean> = { "/": true };
 
-  private _fetch?: typeof globalThis.fetch;
+  private internalFetch?: typeof globalThis.fetch;
 
   private all = false;
 
   get fetch(): typeof globalThis.fetch {
-    if (this._fetch) return this._fetch;
+    if (this.internalFetch) return this.internalFetch;
 
     if (typeof this.session === "undefined")
       // TODO: See if we should be using cross-fetch here
@@ -136,7 +112,7 @@ export class SolidFS implements vscode.FileSystemProvider {
 
     return (...args: Parameters<typeof globalThis.fetch>) => {
       return Promise.resolve(this.session).then((sess) => {
-        this._fetch = sess!.fetch;
+        this.internalFetch = sess!.fetch;
         return sess!.fetch(...args);
       });
     };
@@ -152,7 +128,7 @@ export class SolidFS implements vscode.FileSystemProvider {
   }) {
     this.session = options.session;
     this.root = options.root;
-    this.all = options.all
+    this.all = options.all;
   }
 
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
@@ -264,20 +240,29 @@ export class SolidFS implements vscode.FileSystemProvider {
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
-
     // This logic does not seem to currently be working on the CSS, hence why we are using the
-    // try/catch approach instead 
+    // try/catch approach instead
     // TODO: Assess performance impact of this
     return (
-      await list(source, { fetch: this.fetch, all: this.all, verbose: false, logger: errorLogger })
-    )
-    // This filter is required since ACLs do not necessarily live in the same storage location,
-    // for instance the ACLs for the ESS live at https://authorization.ap.inrupt.com/8b81bf5d2ffb4fa0b5b82a419ecd9829
-    .filter(src => src.url.startsWith(source))
-    .map((src) => [
-      src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
-      src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
-    ]);
+      (
+        await list(source, {
+          fetch: this.fetch,
+          all: this.all,
+          verbose: false,
+          logger: errorLogger,
+        })
+      )
+        // This filter is required since ACLs do not necessarily live in the same storage location,
+        // for instance the ACLs for the ESS live at https://authorization.ap.inrupt.com/8b81bf5d2ffb4fa0b5b82a419ecd9829
+        .filter((src) => src.url.startsWith(source))
+        .map((src) => [
+          src.url.slice(
+            this.root.length - 1,
+            src.url.length - Number(src.isDir)
+          ),
+          src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
+        ])
+    );
 
     // // sources.map(src => {
     // //   src.
@@ -360,9 +345,13 @@ export class SolidFS implements vscode.FileSystemProvider {
         }
         // TODO: Be more granular with permissions here (e.g. throw )
 
-        vscode.window.showErrorMessage(`Error retrieving remote resource [${resource}]: ${await result.text()}`)
+        vscode.window.showErrorMessage(
+          `Error retrieving remote resource [${resource}]: ${await result.text()}`
+        );
 
-        vscode.FileSystemError.Unavailable(`Error retrieving remote resource [${resource}]: ${await result.text()}`);
+        vscode.FileSystemError.Unavailable(
+          `Error retrieving remote resource [${resource}]: ${await result.text()}`
+        );
       }
     } catch (e) {
       // noop
@@ -430,11 +419,11 @@ export class SolidFS implements vscode.FileSystemProvider {
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
-    console.log('removing', await this.vscodeUriToString(uri))
+    console.log("removing", await this.vscodeUriToString(uri));
     await remove(await this.vscodeUriToString(uri), {
       fetch: this.fetch,
       recursive: options.recursive,
-      logger: errorLogger
+      logger: errorLogger,
     });
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
   }
@@ -457,7 +446,11 @@ export class SolidFS implements vscode.FileSystemProvider {
       await this.vscodeUriToString(source),
       await this.vscodeUriToString(destination),
       // TODO: double check the default override case is correct
-      { fetch: this.fetch, noOverride: options.overwrite !== false, logger: errorLogger }
+      {
+        fetch: this.fetch,
+        noOverride: options.overwrite !== false,
+        logger: errorLogger,
+      }
     );
   }
 

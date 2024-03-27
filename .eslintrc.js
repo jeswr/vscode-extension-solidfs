@@ -21,7 +21,8 @@ module.exports = {
     // This requirement does not make sense in this context where we need to implement vscode APIs
     "class-methods-use-this": "off",
     "@typescript-eslint/no-floating-promises": "off",
-    "consistent-return": "off"
+    "consistent-return": "off",
+    "func-names": "off"
   },
   "env": {
     "jest": true
