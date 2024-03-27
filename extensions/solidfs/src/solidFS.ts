@@ -20,17 +20,69 @@
 //
 import type { QueryEngine } from "@comunica/query-sparql-solid";
 import type { Bindings } from "@rdfjs/types";
-import { DataFactory as DF } from "n3";
+import { DataFactory as DF, Store } from "n3";
 import * as vscode from "vscode";
-import {
-  deleteFile,
-  deleteContainer,
-  createContainerAt,
-  overwriteFile,
-} from "@inrupt/solid-client";
+import { overwriteFile } from "@inrupt/solid-client";
 import type { VscodeSolidSession } from "@inrupt/solid-vscode-auth";
+import { copy, list, makeDirectory, remove, Logger } from "solid-bashlib";
+import type { NotificationOptions } from "@inrupt/solid-client-notifications";
+import { WebsocketNotification } from "@inrupt/solid-client-notifications";
+import { JsonLdParser } from "jsonld-streaming-parser";
+
+// class DisposableWebsocketNotification extends WebsocketNotification {
+//   dispose() {
+//     return this.disconnect();
+//   }
+// }
+
+const errorLogger: Logger = {
+  log(...msg) {
+    
+  },
+  error(...msg) {
+    throw new Error(msg.join(', '));
+  },
+}
+
+class DisposableWebsocketNotification {
+  private socket: Promise<WebsocketNotification>;
+
+  constructor(topic: Promise<string>, options?: NotificationOptions) {
+    this.socket = topic.then((t) => new WebsocketNotification(t, options));
+  }
+
+  on(event: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.on(event, listener));
+  }
+
+  off(event: "message", listener: (notification: object) => void) {
+    this.socket.then((socket) => socket.off(event, listener));
+  }
+
+  disconnect() {
+    this.socket.then((socket) => socket.disconnect());
+  }
+
+  dispose() {
+    this.disconnect();
+  }
+}
+
+interface WatchNotificationOptions extends NotificationOptions {
+  listener: (notification: object) => void;
+}
+
+function watchResource(
+  topic: Promise<string>,
+  options: WatchNotificationOptions
+) {
+  const socket = new DisposableWebsocketNotification(topic, options);
+  socket.on("message", options.listener);
+  return vscode.Disposable.from(socket);
+}
 
 const BasicContainer = DF.namedNode("http://www.w3.org/ns/ldp#BasicContainer");
+// TODO: Make sure this is properly used
 const Container = DF.namedNode("http://www.w3.org/ns/ldp#Container");
 
 // TODO: Work out why we are *first* getting non-existant file errors
@@ -67,9 +119,28 @@ export class SolidFS implements vscode.FileSystemProvider {
 
   private root: string;
 
-  private engine: QueryEngine;
-
   private stats: Record<string, boolean> = { "/": true };
+
+  private _fetch?: typeof globalThis.fetch;
+
+  private all = false;
+
+  get fetch(): typeof globalThis.fetch {
+    if (this._fetch) return this._fetch;
+
+    if (typeof this.session === "undefined")
+      // TODO: See if we should be using cross-fetch here
+      return globalThis.fetch;
+
+    if ("fetch" in this.session) return this.session.fetch;
+
+    return (...args: Parameters<typeof globalThis.fetch>) => {
+      return Promise.resolve(this.session).then((sess) => {
+        this._fetch = sess!.fetch;
+        return sess!.fetch(...args);
+      });
+    };
+  }
 
   constructor(options: {
     session:
@@ -77,11 +148,11 @@ export class SolidFS implements vscode.FileSystemProvider {
       | undefined
       | Promise<VscodeSolidSession | undefined>;
     root: string;
-    engine: QueryEngine;
+    all: boolean;
   }) {
     this.session = options.session;
     this.root = options.root;
-    this.engine = options.engine;
+    this.all = options.all
   }
 
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
@@ -95,13 +166,30 @@ export class SolidFS implements vscode.FileSystemProvider {
       readonly excludes: readonly string[];
     }
   ): vscode.Disposable {
+    return watchResource(this.vscodeUriToString(uri), {
+      async listener(notification: object) {
+        const store = new Store();
+        const myParser = new JsonLdParser();
+
+        await new Promise((resolve, reject) => {
+          myParser
+            .on("data", (quad) => store.add(quad))
+            .on("error", reject)
+            .on("end", resolve);
+
+          myParser.write(JSON.stringify(notification));
+          myParser.end();
+        });
+      },
+      fetch: this.fetch,
+    });
+    // const disposable = watchResource(this.vscodeUriToString(uri))
     // ignore, fires for all changes...
-    return new vscode.Disposable(() => {});
+    // return new vscode.Disposable(() => {});
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    console.log("stat called on", uri);
-
+    // console.log('stat called on', `${uri}`)
     // TODO: See if we should be looking up parent dir instead?
     if (!(uri.path in this.stats)) {
       const fileType = await new Promise<boolean | undefined>(
@@ -140,12 +228,8 @@ export class SolidFS implements vscode.FileSystemProvider {
       );
 
       if (fileType !== undefined) {
-        console.log("setting filetype", fileType, "for", uri.path);
         this.stats[uri.path] = fileType;
       }
-
-      // const race = await Promise.race([ file, dir ])
-      // race.url.endsWith('/')
     }
 
     if (uri.path in this.stats) {
@@ -159,8 +243,6 @@ export class SolidFS implements vscode.FileSystemProvider {
         ctime: 0,
       };
     }
-
-    console.log("abotu to throw stat error for", uri);
 
     throw vscode.FileSystemError.FileNotFound(uri);
 
@@ -178,74 +260,92 @@ export class SolidFS implements vscode.FileSystemProvider {
   // in the container metadata.
   // TODO: See if we can just determine this based on trailing slash
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-    console.log("read directory called on", uri);
     const source = `${this.root}${
       uri.path.length > 1 ? `${uri.path.slice(1)}/` : ""
     }`;
 
-    try {
-      const session = await this.session;
 
-      console.log("fetch object is", session, typeof session?.fetch);
+    // This logic does not seem to currently be working on the CSS, hence why we are using the
+    // try/catch approach instead 
+    // TODO: Assess performance impact of this
+    return (
+      await list(source, { fetch: this.fetch, all: this.all, verbose: false, logger: errorLogger })
+    )
+    // This filter is required since ACLs do not necessarily live in the same storage location,
+    // for instance the ACLs for the ESS live at https://authorization.ap.inrupt.com/8b81bf5d2ffb4fa0b5b82a419ecd9829
+    .filter(src => src.url.startsWith(source))
+    .map((src) => [
+      src.url.slice(this.root.length - 1, src.url.length - Number(src.isDir)),
+      src.isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    ]);
 
-      const bindings = await this.engine.queryBindings(
-        `
-      SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
-        {
-          "@comunica/actor-http-inrupt-solid-client-authn:session": {
-            fetch: session?.fetch,
-            info: {
-              webId: session?.account.id,
-              isLoggedIn: true,
-            },
-          },
-          sources: [source],
-        }
-      );
+    // // sources.map(src => {
+    // //   src.
+    // // })
 
-      const res = await bindings
-        .map<[string, vscode.FileType]>((binding) => {
-          const str = binding.get("o")!.value;
-          const isDir = str.endsWith("/");
-          const path = str.slice(
-            this.root.length - 1,
-            str.length - Number(isDir)
-          );
-          this.stats[path] = isDir;
+    // return [];
 
-          return [
-            str.slice(this.root.length - 1, str.length - Number(isDir)),
-            isDir ? vscode.FileType.Directory : vscode.FileType.File,
-          ];
-        })
-        .toArray();
+    // try {
+    //   console.log('begin reading dir')
+    //   const session = await this.session;
 
-      console.log("returning ", res);
-      return res;
-    } catch (e) {
-      // TODO: Properly log this
-      console.error("error reading directory", e);
-    }
+    //   const bindings = await this.engine.queryBindings(
+    //     `
+    //   SELECT * WHERE { <${source}> <http://www.w3.org/ns/ldp#contains> ?o  }`,
+    //     {
+    //       "@comunica/actor-http-inrupt-solid-client-authn:session": {
+    //         fetch: session?.fetch,
+    //         info: {
+    //           webId: session?.account.id,
+    //           isLoggedIn: true,
+    //         },
+    //       },
+    //       sources: [source],
+    //     }
+    //   );
 
-    return [];
+    //   const res = await bindings
+    //     .map<[string, vscode.FileType]>((binding) => {
+    //       const str = binding.get("o")!.value;
+    //       const isDir = str.endsWith("/");
+    //       const path = str.slice(
+    //         this.root.length - 1,
+    //         str.length - Number(isDir)
+    //       );
+    //       this.stats[path] = isDir;
+
+    //       return [
+    //         str.slice(this.root.length - 1, str.length - Number(isDir)),
+    //         isDir ? vscode.FileType.Directory : vscode.FileType.File,
+    //       ];
+    //     })
+    //     .toArray();
+
+    //   console.log('returning', res)
+
+    //   return res;
+    // } catch (e) {
+    //   // TODO: Properly log this (or perhaps throw an error)
+    //   console.error("error reading directory", e);
+    // }
+
+    // return [];
   }
 
   async createDirectory(uri: vscode.Uri): Promise<void> {
-    // console.log("create directory called on", uri);
-    await createContainerAt(`${this.root}${uri.path.slice(1)}/`, {
-      fetch: (await this.session)?.fetch,
+    await makeDirectory(`${this.root}${uri.path.slice(1)}/`, {
+      fetch: this.fetch,
     });
-    // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
 
     this.fireSoon({ type: vscode.FileChangeType.Created, uri });
-    // throw new Error('Method not implemented.');
   }
 
   async readFile(uri: vscode.Uri): Promise<Uint8Array> {
     try {
       const session = await this.session;
       if (session) {
+        const resource = `${this.root}${uri.path.slice(1)}`;
+
         const result = await session.fetch(`${this.root}${uri.path.slice(1)}`);
         // TODO: Do not just return an empty buffer when fetch is not working
         if (result.status === 200) {
@@ -258,9 +358,11 @@ export class SolidFS implements vscode.FileSystemProvider {
           // TODO: Error here once we have fixed the empty-file giving 406 error
           return Uint8Array.from([]);
         }
-
         // TODO: Be more granular with permissions here (e.g. throw )
-        vscode.FileSystemError.Unavailable(await result.text());
+
+        vscode.window.showErrorMessage(`Error retrieving remote resource [${resource}]: ${await result.text()}`)
+
+        vscode.FileSystemError.Unavailable(`Error retrieving remote resource [${resource}]: ${await result.text()}`);
       }
     } catch (e) {
       // noop
@@ -273,15 +375,14 @@ export class SolidFS implements vscode.FileSystemProvider {
     content: Uint8Array,
     options: { readonly create: boolean; readonly overwrite: boolean }
   ): Promise<void> {
-    console.log("write file called on", uri);
+    // console.log("write file called on", uri);
     // TODO: See if we need to trigger an update
     const i = uri.path.lastIndexOf("/") + 1;
 
     // TODO: Predict this based on file type
-    const data = await ((await this.session)?.fetch ?? fetch)(
-      `${this.root}${uri.path.slice(1, i)}`,
-      { method: "HEAD" }
-    );
+    const data = await (
+      (await this.session)?.fetch ?? (globalThis as any).fetch
+    )(`${this.root}${uri.path.slice(1, i)}`, { method: "HEAD" });
     let contentType;
     if (data.status !== 200) {
       const ext = uri.path.slice(uri.path.lastIndexOf(".") + 1);
@@ -293,21 +394,18 @@ export class SolidFS implements vscode.FileSystemProvider {
       contentType = data.headers.get("Content-Type") ?? undefined;
     }
 
-    const buf = Buffer.from(content);
-    console.log(buf.toString("utf8"));
-
-    console.log("saving in container", `${this.root}${uri.path.slice(1, i)}`);
-    console.log("with slug", uri.path.slice(i));
-    console.log("with content type", contentType);
-
-    await overwriteFile(`${this.root}${uri.path.slice(1)}`, buf, {
-      fetch: (await this.session)?.fetch,
-      contentType,
-    });
+    await overwriteFile(
+      `${this.root}${uri.path.slice(1)}`,
+      Buffer.from(content),
+      {
+        fetch: (await this.session)?.fetch,
+        contentType,
+      }
+    );
 
     // Clear the comunica cache
     // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
+    // await this.engine.invalidateHttpCache();
 
     delete this.stats[uri.path];
     if (data.status !== 200) {
@@ -321,51 +419,46 @@ export class SolidFS implements vscode.FileSystemProvider {
     // throw new Error('Method not implemented.');
   }
 
+  async vscodeUriToString(uri: vscode.Uri) {
+    const stat = await this.stat(uri);
+    return `${this.root}${uri.path.slice(1)}${
+      stat.type === vscode.FileType.File ? "" : "/"
+    }`;
+  }
+
   async delete(
     uri: vscode.Uri,
     options: { readonly recursive: boolean }
   ): Promise<void> {
-    console.log("delete called on", uri);
-    // TODO: Handle recursive
-
-    const stat = await this.stat(uri);
-
-    if (stat.type === vscode.FileType.File) {
-      await deleteFile(`${this.root}${uri.path.slice(1)}`, {
-        fetch: (await this.session)?.fetch,
-      });
-    } else {
-      await deleteContainer(`${this.root}${uri.path.slice(1)}/`, {
-        fetch: (await this.session)?.fetch,
-      });
-    }
-
-    // TODO: Don't be as aggressive - just invalidate the parent
-    await this.engine.invalidateHttpCache();
-    // TODO: Get this working
+    console.log('removing', await this.vscodeUriToString(uri))
+    await remove(await this.vscodeUriToString(uri), {
+      fetch: this.fetch,
+      recursive: options.recursive,
+      logger: errorLogger
+    });
     this.fireSoon({ type: vscode.FileChangeType.Deleted, uri });
-
-    return;
-
-    throw new Error("Method not implemented.");
   }
 
-  rename(
+  async rename(
     oldUri: vscode.Uri,
     newUri: vscode.Uri,
     options: { readonly overwrite: boolean }
-  ): void | Thenable<void> {
-    console.log("rename file called on", oldUri, newUri, options);
-    throw new Error("Method not implemented.");
+  ): Promise<void> {
+    await this.copy(oldUri, newUri, options);
+    await this.delete(oldUri, { recursive: true });
   }
 
-  copy?(
+  async copy(
     source: vscode.Uri,
     destination: vscode.Uri,
     options: { readonly overwrite: boolean }
-  ): void | Thenable<void> {
-    console.log("cope called on", source, destination, options);
-    throw new Error("Method not implemented.");
+  ): Promise<void> {
+    await copy(
+      await this.vscodeUriToString(source),
+      await this.vscodeUriToString(destination),
+      // TODO: double check the default override case is correct
+      { fetch: this.fetch, noOverride: options.overwrite !== false, logger: errorLogger }
+    );
   }
 
   private bufferedEvents: vscode.FileChangeEvent[] = [];

@@ -1,3 +1,6 @@
-node_modules/
+**/node_modules/
 license.csv
-
+**/out/
+**/dist/
+**/.vscode-test/
+**/*.vsix

@@ -1,0 +1,46 @@
+// A launch configuration that compiles the extension and then opens it inside a new window
+// Use IntelliSense to learn about possible attributes.
+// Hover to view descriptions of existing attributes.
+// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Launch via npm",
+			"type": "node",
+			"request": "launch",
+			"cwd": "${workspaceFolder}",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run-script", "solidauth:test"],
+			"skipFiles": [
+				"node_modules/**",
+				"<node_internals>/**",
+				"/home/jesse/Documents/github/vscode-extension-solidfs/node_modules/ts-loader/dist/resolver.js"
+			],
+		},
+		// {
+		// 	"name": "Temp Testing",
+		// 	"type": "node-terminal",
+		// 	"request": "launch",
+			// "skipFiles": [
+			// 	"node_modules/**"
+			// ],
+		// 	"postDebugTask": "npm solidauth:test"
+		// },
+		{
+			"name": "SolidFS: Run Extension",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--profile-temp",
+				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidfs/",
+				"--extensionDevelopmentPath=${workspaceFolder}/extensions/solidauth/",
+			],
+			"outFiles": [
+				"${workspaceFolder}/extensions/solidfs/dist/**/*.js",
+				// "${workspaceFolder}/extensions/solidauth/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: compile"
+		},
+	]
+}
