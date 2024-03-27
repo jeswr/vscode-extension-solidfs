@@ -496,7 +496,7 @@ export class SolidAuthenticationProvider
             });
           });
 
-          progress.report({ message: `Completing login` });
+          progress.report({ message: "Completing login" });
 
           await session.handleIncomingRedirect(uri);
         } catch (e) {
@@ -525,7 +525,7 @@ export class SolidAuthenticationProvider
         }
 
         progress.report({
-          message: `Loading details`,
+          message: "Loading details",
         });
 
         const queryEngine = new QueryEngine();
@@ -605,23 +605,21 @@ async function toAuthenticationSessionFromStorage(
   return toAuthenticationSession(session, storage);
 }
 
+function getForUser(storage: IStorageUtility, sessionId: string, key: string) {
+  return storage.getForUser(sessionId, key, {
+    secure: true,
+    errorIfNull: true,
+  });
+}
+
 async function getAccessToken(
   sessionId: string,
   storage: IStorageUtility
 ): Promise<string> {
   return JSON.stringify({
-    access_token: await storage.getForUser(sessionId, "access_token", {
-      secure: true,
-      errorIfNull: true,
-    }),
-    privateKey: await storage.getForUser(sessionId, "privateKey", {
-      secure: true,
-      errorIfNull: true,
-    }),
-    publicKey: await storage.getForUser(sessionId, "publicKey", {
-      secure: true,
-      errorIfNull: true,
-    }),
+    access_token: await getForUser(storage, sessionId, "access_token"),
+    privateKey: await getForUser(storage, sessionId, "privateKey"),
+    publicKey: await getForUser(storage, sessionId, "publicKey"),
   });
 }
 
@@ -642,18 +640,12 @@ async function toAuthenticationSession(
     id: session.info.sessionId,
     accessToken: await getAccessToken(sessionId, storage),
     account: {
-      label: (await storage.getForUser(sessionId, "label", {
-        secure: true,
-        errorIfNull: true,
-      }))!,
+      label: (await getForUser(storage, sessionId, "label"))!,
       id: webId,
     },
     scopes: [
       `webId:${webId}`,
-      `oidcIssuer:${await storage.getForUser(sessionId, "issuer", {
-        secure: true,
-        errorIfNull: true,
-      })}`,
+      `oidcIssuer:${await getForUser(storage, sessionId, "issuer")}`,
     ],
   };
 }
