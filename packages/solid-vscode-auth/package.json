@@ -24,13 +24,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/inrupt/vscode-extension-solidfs.git"
+    "url": "git+https://github.com/jeswr/vscode-extension-solidfs.git"
   },
   "scripts": {
     "build": "tsc"
   },
   "bugs": {
-    "url": "https://github.com/inrupt/vscode-extension-solidfs/issues"
+    "url": "https://github.com/jeswr/vscode-extension-solidfs/issues"
   },
   "peerDependencies": {
     "@types/vscode": "^1.73.1"
