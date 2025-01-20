@@ -60,7 +60,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "dependencies": {
-    "@comunica/query-sparql": "^2.6.0",
+    "@comunica/query-sparql": "^4.0.2",
     "@comunica/query-sparql-solid": "^4.0.2",
     "@inrupt/solid-client": "^1.25.0",
     "@inrupt/solid-client-authn-core": "1.13.0",
