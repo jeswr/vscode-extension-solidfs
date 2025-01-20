@@ -63,7 +63,7 @@
     "nx": "^15.6.2",
     "open": "^8.4.0",
     "playwright": "^1.30.0",
-    "rollup": "^3.11.0",
+    "rollup": "^4.31.0",
     "rollup-plugin-typescript2": "^0.34.1",
     "solid-bashlib": "^0.2.5",
     "solidauth": "^0.0.1",
