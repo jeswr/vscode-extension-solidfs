@@ -36,7 +36,7 @@
   "devDependencies": {
     "@babel/core": "^7.20.12",
     "@babel/preset-env": "^7.20.2",
-    "@inrupt/jest-jsdom-polyfills": "^1.5.3",
+    "@inrupt/jest-jsdom-polyfills": "^3.2.4",
     "@jeswr/css-auth-utils": "^1.3.0",
     "@jeswr/css-init-utils": "^1.0.0",
     "@rushstack/eslint-patch": "^1.2.0",
